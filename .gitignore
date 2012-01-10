@@ -1,0 +1,5 @@
+.idea
+gen
+libs
+*.iml
+local.properties

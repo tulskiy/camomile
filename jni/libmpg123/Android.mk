@@ -1,0 +1,16 @@
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := libmpg123
+LOCAL_SRC_FILES := $(TARGET_ARCH_ABI)/libmpg123.a
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
+include $(PREBUILT_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_ARM_MODE  := arm
+LOCAL_MODULE    := mpg123-jni
+LOCAL_SRC_FILES := mpg123-jni.c
+LOCAL_SHARED_LIBRARIES := libmpg123
+LOCAL_CFLAGS += -O4 -std=c99
+LOCAL_LDLIBS := -llog
+include $(BUILD_SHARED_LIBRARY)

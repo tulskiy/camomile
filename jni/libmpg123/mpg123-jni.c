@@ -37,7 +37,7 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
             format[2] = encoding;
             (*env)->ReleaseIntArrayElements(env, formatArray, format, 0);
 
-            LOG("New format. rate: %d, channels: %d, format: %d", rate, channels, format);
+            LOG("New format. rate: %d, channels: %d, format: %d", rate, channels, encoding);
 
             if (encoding != MPG123_ENC_SIGNED_16 && encoding != MPG123_ENC_SIGNED_8) {
                 LOGE("Unsupported format!!!");

@@ -20,9 +20,4 @@ public class PlayerActivityTest extends ActivityInstrumentationTestCase2<PlayerA
     public PlayerActivityTest() {
         super("com.tulskiy.camomile", PlayerActivity.class);
     }
-
-    public void test1() {
-        assertTrue(new MP3Decoder().open(new File("/sdcard/test/01.mp3")));
-    }
-
 }

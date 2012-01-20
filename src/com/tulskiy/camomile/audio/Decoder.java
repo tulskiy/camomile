@@ -15,4 +15,6 @@ public interface Decoder {
     int decode(byte[] buffer);
 
     void close();
+
+    void seek(int sample);
 }

@@ -1,6 +1,7 @@
 #include <string.h>
 #include <jni.h>
 #include "mpg123.h"
+#include <stdio.h>
 #include <android/log.h>
 
 #define LOG(x...) __android_log_print(ANDROID_LOG_DEBUG, "camomile", x)
@@ -47,6 +48,15 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
         return (jint)mh;
     } else {
         return 0;
+    }
+}
+
+void JNI_FUNCTION(seek) (JNIEnv* env, jobject obj, jint handle, jint offset) {
+    mpg123_handle* mh = (mpg123_handle*) handle;
+    int ret = mpg123_seek(mh, offset, SEEK_SET);
+
+    if (ret != MPG123_OK) {
+        LOGE("Error during seek to sample %d: %s", offset, mpg123_plain_strerror(ret));
     }
 }
 

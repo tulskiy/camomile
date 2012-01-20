@@ -34,6 +34,10 @@ public class MP3Decoder implements Decoder {
         int length = decode(handle, buffer, buffer.length);
         return length > 0 ? length : -1; 
     }
+
+    public void seek(int sample) {
+        seek(handle, sample);
+    }
     
     public void close() {
         close(handle);
@@ -42,6 +46,8 @@ public class MP3Decoder implements Decoder {
     public native int open(String fileName, int[] format);
     
     public native int decode(int handle, byte[] buffer, int size);
+    
+    public native int seek(int handle, int offset);
     
     public native int close(int handle);
     

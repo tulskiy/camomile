@@ -1,0 +1,22 @@
+This project contains all the code to build a shared library for decoding
+WavPack files on the Android platform. This code uses the 4.60.1 code base.
+
+For the patches needed to add the shared library to Android, please see:
+https://review.source.android.com/13007
+https://review.source.android.com/13008
+https://review.source.android.com/13009
+
+A test suite of sample WavPack files is available from:
+http://www.wavpack.com/downloads.html
+
+The generated (ARM) shared library is approximately 58K in size, if you require
+a slightly smaller file (approx 54KB) you can achieve this by commenting out
+the following line in unpack.c
+
+#define FAST_DECODE
+
+For license details, please see the file license.txt
+For more details about WavPack, please visit www.wavpack.com
+
+If you have any queries or comments you can reach me at 
+beatofthedrum AT gmail DOT com

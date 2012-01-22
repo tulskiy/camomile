@@ -8,7 +8,7 @@ import android.view.View;
 import com.tulskiy.camomile.audio.Decoder;
 import com.tulskiy.camomile.audio.AudioFormat;
 import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
-import com.tulskiy.camomile.audio.formats.ogg.VorbisDecoder;
+import com.tulskiy.camomile.audio.formats.wavpack.WavPackDecoder;
 
 import java.io.File;
 
@@ -37,8 +37,8 @@ public class PlayerActivity extends Activity {
 
     private static class PlayerThread implements Runnable {
         public void run() {
-            Decoder decoder = new VorbisDecoder();
-            if (decoder.open(new File("/sdcard/Music/Callisto (Original Mix).ogg"))) {
+            Decoder decoder = new WavPackDecoder();
+            if (decoder.open(new File("/sdcard/Music/05 Shadow Of The Day.wv"))) {
                 AudioFormat audioFormat = decoder.getAudioFormat();
                 int minSize = 4 * AudioTrack.getMinBufferSize(
                         audioFormat.getSampleRate(),

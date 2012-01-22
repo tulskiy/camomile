@@ -42,13 +42,13 @@ public class MP3Decoder implements Decoder {
         close(handle);
     }
     
-    public native int open(String fileName, int[] format);
+    private native int open(String fileName, int[] format);
     
-    public native int decode(int handle, byte[] buffer, int size);
+    private native int decode(int handle, byte[] buffer, int size);
     
-    public native int seek(int handle, int offset);
+    private native int seek(int handle, int offset);
     
-    public native int close(int handle);
+    private native int close(int handle);
     
     static {
         System.loadLibrary("mpg123-jni");

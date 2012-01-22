@@ -5,6 +5,7 @@ import android.test.AndroidTestCase;
 import android.test.InstrumentationTestCase;
 import android.util.Log;
 import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
+import com.tulskiy.camomile.audio.formats.ogg.VorbisDecoder;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -22,8 +23,13 @@ public class DecoderTest extends InstrumentationTestCase {
         new Tester(new MP3Decoder(), "testfiles/mp3/sample.mp3", 29400).start();
     }
 
+    public void testVorbis() throws IOException {
+        new Tester(new VorbisDecoder(), "testfiles/ogg/sample.ogg", 29400).start();
+    }
+
     class Tester {
         private Decoder decoder;
+        private String fileName;
         private int totalSamples;
         private File input;
         private ByteBuffer reference;
@@ -31,12 +37,13 @@ public class DecoderTest extends InstrumentationTestCase {
 
         public Tester(Decoder decoder, String fileName, int totalSamples) {
             this.decoder = decoder;
+            this.fileName = fileName;
             this.totalSamples = totalSamples;
-            input = copyInputData(decoder, fileName);
-            assertNotNull("Could not copy input to temp file", input);
         }
 
         public void start() {
+            input = copyInputData(decoder, fileName);
+            assertNotNull("Could not copy input to temp file", input);
             assertTrue("Decoder returned an error", decoder.open(input));
             fmt = decoder.getAudioFormat();
 
@@ -62,6 +69,8 @@ public class DecoderTest extends InstrumentationTestCase {
                     assertEquals(reference.get(), buffer.get());
                 }
             }
+            decoder.close();
+            input.delete();
         }
 
         private ByteBuffer decode(int offset) {
@@ -96,7 +105,7 @@ public class DecoderTest extends InstrumentationTestCase {
                     int len = is.read(buf);
                     fos.write(buf, 0, len);
                 }
-                
+
                 is.close();
                 fos.close();
                 return file;

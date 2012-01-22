@@ -10,7 +10,7 @@ public interface Decoder {
 
     boolean open(File file);
 
-    Format getAudioFormat();
+    AudioFormat getAudioFormat();
 
     int decode(byte[] buffer);
 

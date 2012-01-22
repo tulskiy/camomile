@@ -1,8 +1,7 @@
 package com.tulskiy.camomile.audio.formats.mp3;
 
-import android.media.AudioFormat;
 import com.tulskiy.camomile.audio.Decoder;
-import com.tulskiy.camomile.audio.Format;
+import com.tulskiy.camomile.audio.AudioFormat;
 
 import java.io.File;
 
@@ -12,21 +11,21 @@ import java.io.File;
  */
 public class MP3Decoder implements Decoder {
     private int handle;
-    private Format audioFormat;
+    private AudioFormat audioFormat;
     private static final int MPG123_ENCODING_SIGNED_16 = 0xD0;
 
     public boolean open(File file) {
         int[] format = new int[3];
         handle = open(file.getAbsolutePath(), format);
-        audioFormat = new Format(
-                format[0], // rate
-                format[1] == 2 ? AudioFormat.CHANNEL_CONFIGURATION_STEREO : AudioFormat.CHANNEL_CONFIGURATION_MONO,
-                format[2] == MPG123_ENCODING_SIGNED_16 ? AudioFormat.ENCODING_PCM_16BIT : AudioFormat.ENCODING_PCM_8BIT
+        audioFormat = new AudioFormat(
+                format[0], // sample rate
+                format[1], // channels
+                format[2] == MPG123_ENCODING_SIGNED_16 ? 16 : 8
         );
         return handle != 0;
     }
 
-    public Format getAudioFormat() {
+    public AudioFormat getAudioFormat() {
         return audioFormat;
     }
 

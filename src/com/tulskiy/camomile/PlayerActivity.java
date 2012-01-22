@@ -1,13 +1,12 @@
 package com.tulskiy.camomile;
 
 import android.app.Activity;
-import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Bundle;
 import android.view.View;
 import com.tulskiy.camomile.audio.Decoder;
-import com.tulskiy.camomile.audio.Format;
+import com.tulskiy.camomile.audio.AudioFormat;
 import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
 
 import java.io.File;
@@ -25,30 +24,7 @@ public class PlayerActivity extends Activity {
         playButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
                 try {
-                    Thread t = new Thread(new Runnable() {
-                        public void run() {
-                            Decoder decoder = new MP3Decoder();
-                            if (decoder.open(new File("/sdcard/Music/06. Alice.mp3"))) {
-                                Format audioFormat = decoder.getAudioFormat();
-                                int minSize = 4 * AudioTrack.getMinBufferSize(audioFormat.getRate(), audioFormat.getChannels(), audioFormat.getEncoding());
-                                AudioTrack track = new AudioTrack(AudioManager.STREAM_MUSIC, audioFormat.getRate(),
-                                        audioFormat.getChannels(), audioFormat.getEncoding(),
-                                        minSize, AudioTrack.MODE_STREAM);
-                                track.play();
-                                byte[] buffer = new byte[minSize];
-                                int i = 0;
-                                while (true) {
-                                    int length = decoder.decode(buffer);
-                                    if (length == -1) {
-                                        break;
-                                    }
-                                    track.write(buffer, 0, length);
-                                }
-                                decoder.close();
-                                track.stop();
-                            }
-                        }
-                    });
+                    Thread t = new Thread(new PlayerThread());
 
                     t.start();
                 } catch (Exception e) {
@@ -58,4 +34,34 @@ public class PlayerActivity extends Activity {
         });
     }
 
+    private static class PlayerThread implements Runnable {
+        public void run() {
+            Decoder decoder = new MP3Decoder();
+            if (decoder.open(new File("/sdcard/Music/06. Alice.mp3"))) {
+                AudioFormat audioFormat = decoder.getAudioFormat();
+                int minSize = 4 * AudioTrack.getMinBufferSize(
+                        audioFormat.getSampleRate(),
+                        audioFormat.getChannelConfig(),
+                        audioFormat.getEncoding());
+                AudioTrack track = new AudioTrack(
+                        AudioManager.STREAM_MUSIC,
+                        audioFormat.getSampleRate(),
+                        audioFormat.getChannelConfig(),
+                        audioFormat.getEncoding(),
+                        minSize, AudioTrack.MODE_STREAM);
+                track.play();
+                byte[] buffer = new byte[minSize];
+                int i = 0;
+                while (true) {
+                    int length = decoder.decode(buffer);
+                    if (length == -1) {
+                        break;
+                    }
+                    track.write(buffer, 0, length);
+                }
+                decoder.close();
+                track.stop();
+            }
+        }
+    }
 }

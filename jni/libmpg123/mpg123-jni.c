@@ -1,6 +1,6 @@
 #include <string.h>
 #include <jni.h>
-#include "mpg123.h"
+#include "src/mpg123.h"
 #include <stdio.h>
 #include <android/log.h>
 

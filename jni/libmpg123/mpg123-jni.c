@@ -55,8 +55,10 @@ void JNI_FUNCTION(seek) (JNIEnv* env, jobject obj, jint handle, jint offset) {
     mpg123_handle* mh = (mpg123_handle*) handle;
     int ret = mpg123_seek(mh, offset, SEEK_SET);
 
-    if (ret != MPG123_OK) {
+    if (ret < 0) {
         LOGE("Error during seek to sample %d: %s", offset, mpg123_plain_strerror(ret));
+    } else if (ret != offset) {
+        LOGE("mpg123_seek returned invalid offset, expected %d, got %d", offset, ret);
     }
 }
 

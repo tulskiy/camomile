@@ -58,7 +58,7 @@ jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buf
 
     (*env)->ReleaseByteArrayElements(env, buffer, target, 0);
     if (ret <= 0) {
-        LOGE("libvobis returned an error (possibly EOF): %s", ret);
+        if (ret != 0) LOGE("libvobis returned an error: %d", ret);
         return -1;
     } else {
         return ret;

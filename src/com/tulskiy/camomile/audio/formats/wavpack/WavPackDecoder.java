@@ -25,24 +25,24 @@ public class WavPackDecoder implements Decoder {
     }
 
     public int decode(byte[] buffer) {
-        return 0;
+        return decode(handle, buffer, buffer.length);
     }
 
     public void close() {
-
+        close(handle);
     }
 
     public void seek(int sample) {
-
+        seek(handle, sample);
     }
 
     private native int open(String fileName, int[] format);
 
-//    private native int seek(int handle, int offset);
+    private native int seek(int handle, int offset);
 
     private native int decode(int handle, byte[] buffer, int size);
 
-//    private native int close(int handle);
+    private native int close(int handle);
 
     static {
         System.loadLibrary("wavpack-jni");

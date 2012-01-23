@@ -6,11 +6,9 @@ import android.test.InstrumentationTestCase;
 import android.util.Log;
 import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
 import com.tulskiy.camomile.audio.formats.ogg.VorbisDecoder;
+import com.tulskiy.camomile.audio.formats.wavpack.WavPackDecoder;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 
 
@@ -25,6 +23,10 @@ public class DecoderTest extends InstrumentationTestCase {
 
     public void testVorbis() throws IOException {
         new Tester(new VorbisDecoder(), "testfiles/ogg/sample.ogg", 29400).start();
+    }
+
+    public void testWavPack() throws IOException {
+        new Tester(new WavPackDecoder(), "testfiles/wavpack/sample.wv", 29400).start();
     }
 
     class Tester {
@@ -66,7 +68,19 @@ public class DecoderTest extends InstrumentationTestCase {
                 reference.position(offset * fmt.getFrameSize());
 
                 while (reference.hasRemaining()) {
-                    assertEquals(reference.get(), buffer.get());
+                    if (reference.get() != buffer.get()) {
+                        try {
+                            FileOutputStream fos1 = new FileOutputStream("/sdcard/frame1.dat");
+                            fos1.getChannel().write(reference);
+                            fos1.close();
+                            FileOutputStream fos2 = new FileOutputStream("/sdcard/frame2.dat");
+                            fos2.getChannel().write(buffer);
+                            fos2.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        fail();
+                    }
                 }
             }
             decoder.close();
@@ -80,13 +94,16 @@ public class DecoderTest extends InstrumentationTestCase {
 
             byte[] buf = new byte[65536];
 
+            int samplesDecoded = 0;
             while (true) {
                 int len = decoder.decode(buf);
                 if (len == -1) {
                     break;
                 }
+                samplesDecoded += len;
                 output.put(buf, 0, len);
             }
+            Log.d("camomile", "decoded " + samplesDecoded / fmt.getFrameSize() + " samples");
             assertEquals((totalSamples - offset) * fmt.getFrameSize(), output.position());
             return (ByteBuffer) output.rewind();
         }

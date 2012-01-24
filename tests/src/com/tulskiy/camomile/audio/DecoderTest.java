@@ -114,6 +114,7 @@ public class DecoderTest extends InstrumentationTestCase {
                 InputStream is = am.open(fileName);
 
                 File file = File.createTempFile(decoder.getClass().getCanonicalName(), "input.dat");
+                file.deleteOnExit();
 
                 FileOutputStream fos = new FileOutputStream(file);
 

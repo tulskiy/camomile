@@ -12,8 +12,10 @@ import java.io.File;
 public class WavPackDecoder implements Decoder {
     private int handle;
     private AudioFormat audioFormat;
+    private File file;
 
     public boolean open(File file) {
+        this.file = file;
         int[] format = new int[3];
         handle = open(file.getAbsolutePath(), format);
         audioFormat = new AudioFormat(format[0], format[1], format[2]);
@@ -33,6 +35,8 @@ public class WavPackDecoder implements Decoder {
     }
 
     public void seek(int sample) {
+        close();
+        open(file);
         seek(handle, sample);
     }
 

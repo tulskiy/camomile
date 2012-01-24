@@ -14,6 +14,7 @@ typedef struct {
     int32_t *temp_buffer;
     int channels;
     int bps;
+	int total_samples;
 } Context;
 
 static unsigned char *format_samples (int bps, unsigned char *dst, int32_t *src, uint32_t samcnt) {
@@ -49,6 +50,7 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
     ctx->channels = WavpackGetReducedChannels(ctx->wpc);
     ctx->bps = WavpackGetBytesPerSample(ctx->wpc);
     ctx->temp_buffer = malloc(4096L * ctx->channels * 4);
+	ctx->total_samples = WavpackGetNumSamples(ctx->wpc);
 
     jint* format = (jint*)(*env)->GetIntArrayElements(env, formatArray, 0);
     format[0] = WavpackGetSampleRate(ctx->wpc);
@@ -61,8 +63,17 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
 
 void JNI_FUNCTION(seek) (JNIEnv* env, jobject obj, jint handle, jint offset) {
 	Context* ctx = (Context*) handle;
+	int skip_sample = 0;
+	if (offset >= ctx->total_samples) {
+		offset = ctx->total_samples - 1;
+		skip_sample = 1;
+	}
 	if (!WavpackSeekSample(ctx->wpc, offset)) {
-		LOGE("Could not seek to sample: %d, total samples %d", offset, WavpackGetNumSamples(ctx->wpc));
+		LOGE("Could not seek to sample: %d, total samples %d", offset, ctx->total_samples);
+	}
+	
+	if (skip_sample) {
+		WavpackUnpackSamples(ctx->wpc, ctx->temp_buffer, 1);
 	}
 }
 

@@ -9,5 +9,10 @@
             android:layout_height="wrap_content"
             android:layout_width="fill_parent"
             android:text="Play"/>
+    <Button
+            android:id="@+id/decode"
+            android:layout_height="wrap_content"
+            android:layout_width="fill_parent"
+            android:text="Decode"/>
 </LinearLayout>
 

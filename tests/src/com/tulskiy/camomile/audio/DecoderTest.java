@@ -1,14 +1,16 @@
 package com.tulskiy.camomile.audio;
 
 import android.content.res.AssetManager;
-import android.test.AndroidTestCase;
 import android.test.InstrumentationTestCase;
 import android.util.Log;
 import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
 import com.tulskiy.camomile.audio.formats.ogg.VorbisDecoder;
 import com.tulskiy.camomile.audio.formats.wavpack.WavPackDecoder;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 
@@ -44,6 +46,7 @@ public class DecoderTest extends InstrumentationTestCase {
         }
 
         public void start() {
+            Log.d("camomile", "decoding " + fileName);
             input = copyInputData(decoder, fileName);
             assertNotNull("Could not copy input to temp file", input);
             assertTrue("Decoder returned an error", decoder.open(input));
@@ -69,6 +72,8 @@ public class DecoderTest extends InstrumentationTestCase {
 
                 while (reference.hasRemaining()) {
                     if (reference.get() != buffer.get()) {
+                        Log.e("camomile", "error, not identical result at position: " + buffer.position());
+
                         try {
                             FileOutputStream fos1 = new FileOutputStream("/sdcard/frame1.dat");
                             fos1.getChannel().write(reference);
@@ -79,6 +84,8 @@ public class DecoderTest extends InstrumentationTestCase {
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
+                        decoder.close();
+                        input.delete();
                         fail();
                     }
                 }
@@ -88,6 +95,7 @@ public class DecoderTest extends InstrumentationTestCase {
         }
 
         private ByteBuffer decode(int offset) {
+            Log.d("camomile", "seek to " + offset);
             decoder.seek(offset);
 
             ByteBuffer output = ByteBuffer.allocate(fmt.getFrameSize() * totalSamples + 10000);

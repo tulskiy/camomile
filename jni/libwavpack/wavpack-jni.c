@@ -82,7 +82,6 @@ jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buf
     jbyte* target = (jbyte*)(*env)->GetByteArrayElements(env, buffer, 0);
 
     int samples_unpacked = WavpackUnpackSamples(ctx->wpc, ctx->temp_buffer, 4096);
-	LOG("unpacked %d", samples_unpacked);
     if (samples_unpacked) {
         format_samples(ctx->bps, target, ctx->temp_buffer, samples_unpacked * ctx->channels);
     }

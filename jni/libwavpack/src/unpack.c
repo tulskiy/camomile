@@ -20,10 +20,9 @@
 #include <string.h>
 #include <math.h>
 
-// This flag provides faster decoding speed at the expense of more code. The
-// improvement applies to 16-bit stereo lossless only.
+#include <android/log.h>
 
-#define FAST_DECODE
+#define LOGE(x...) __android_log_print(ANDROID_LOG_ERROR, "camomile", x)
 
 #define LOSSY_MUTE
 
@@ -485,6 +484,10 @@ static void decorr_stereo_pass_1717 (struct decorr_pass *dpp, int32_t *buffer, i
 static void decorr_stereo_pass_1718 (struct decorr_pass *dpp, int32_t *buffer, int32_t sample_count);
 static void decorr_stereo_pass_1818 (struct decorr_pass *dpp, int32_t *buffer, int32_t sample_count);
 static void decorr_stereo_pass_nn (struct decorr_pass *dpp, int32_t *buffer, int32_t sample_count);
+#ifdef CPU_ARM
+extern void decorr_stereo_pass_cont_arm (struct decorr_pass *dpp, int32_t *buffer, int32_t sample_count);
+extern void decorr_stereo_pass_cont_arml (struct decorr_pass *dpp, int32_t *buffer, int32_t sample_count);
+#endif
 static void fixup_samples (WavpackContext *wpc, int32_t *buffer, uint32_t sample_count);
 
 int32_t unpack_samples (WavpackContext *wpc, int32_t *buffer, uint32_t sample_count)
@@ -610,6 +613,18 @@ int32_t unpack_samples (WavpackContext *wpc, int32_t *buffer, uint32_t sample_co
             }
             else
                 decorr_stereo_pass_i (dpp, buffer, sample_count);
+#elif defined(CPU_ARM)
+		if (sample_count < 16)
+            for (tcount = wps->num_terms, dpp = wps->decorr_passes; tcount--; dpp++)
+                decorr_stereo_pass (dpp, buffer, sample_count);
+        else
+            for (tcount = wps->num_terms, dpp = wps->decorr_passes; tcount--; dpp++) {
+                decorr_stereo_pass (dpp, buffer, 8);
+                if (((flags & MAG_MASK) >> MAG_LSB) > 15)
+                    decorr_stereo_pass_cont_arml (dpp, buffer + 16, sample_count - 8);
+                else
+                    decorr_stereo_pass_cont_arm (dpp, buffer + 16, sample_count - 8);
+			}
 #else
         for (tcount = wps->num_terms, dpp = wps->decorr_passes; tcount--; dpp++)
             decorr_stereo_pass (dpp, buffer, sample_count);
@@ -878,9 +893,11 @@ int32_t unpack_samples (WavpackContext *wpc, int32_t *buffer, uint32_t sample_co
             bs_close_read (&wps->wvxbits);
     }
 
-    if (m)
+//#ifndef CPU_ARM
+    if (0)
         for (tcount = wps->num_terms, dpp = wps->decorr_passes; tcount--; dpp++)
             if (dpp->term > 0 && dpp->term <= MAX_TERM) {
+                LOGE("dpp->term %d, m: %d sample_count: %d", dpp->term, m, sample_count);
                 int32_t temp_A [MAX_TERM], temp_B [MAX_TERM];
                 int k;
 
@@ -893,6 +910,7 @@ int32_t unpack_samples (WavpackContext *wpc, int32_t *buffer, uint32_t sample_co
                     m = (m + 1) & (MAX_TERM - 1);
                 }
             }
+//#endif
 
     fixup_samples (wpc, buffer, i);
 
@@ -923,6 +941,124 @@ int32_t unpack_samples (WavpackContext *wpc, int32_t *buffer, uint32_t sample_co
 // weight deltas. The dpp->samples_X[] data is *not* returned normalized for
 // term values 1-8, so it should be normalized if it is going to be used to
 // call this function again.
+
+#ifdef CPU_ARM
+static void decorr_stereo_pass (struct decorr_pass *dpp, int32_t *buffer, int32_t sample_count)
+{
+    int32_t delta = dpp->delta, weight_A = dpp->weight_A, weight_B = dpp->weight_B;
+    int32_t *bptr, *eptr = buffer + (sample_count * 2), sam_A, sam_B;
+    int m, k;
+
+    switch (dpp->term) {
+
+        case 17:
+            for (bptr = buffer; bptr < eptr; bptr += 2) {
+                sam_A = 2 * dpp->samples_A [0] - dpp->samples_A [1];
+                dpp->samples_A [1] = dpp->samples_A [0];
+                dpp->samples_A [0] = apply_weight (weight_A, sam_A) + bptr [0];
+                update_weight (weight_A, delta, sam_A, bptr [0]);
+                bptr [0] = dpp->samples_A [0];
+
+                sam_A = 2 * dpp->samples_B [0] - dpp->samples_B [1];
+                dpp->samples_B [1] = dpp->samples_B [0];
+                dpp->samples_B [0] = apply_weight (weight_B, sam_A) + bptr [1];
+                update_weight (weight_B, delta, sam_A, bptr [1]);
+                bptr [1] = dpp->samples_B [0];
+            }
+
+            break;
+
+        case 18:
+            for (bptr = buffer; bptr < eptr; bptr += 2) {
+                sam_A = (3 * dpp->samples_A [0] - dpp->samples_A [1]) >> 1;
+                dpp->samples_A [1] = dpp->samples_A [0];
+                dpp->samples_A [0] = apply_weight (weight_A, sam_A) + bptr [0];
+                update_weight (weight_A, delta, sam_A, bptr [0]);
+                bptr [0] = dpp->samples_A [0];
+
+                sam_A = (3 * dpp->samples_B [0] - dpp->samples_B [1]) >> 1;
+                dpp->samples_B [1] = dpp->samples_B [0];
+                dpp->samples_B [0] = apply_weight (weight_B, sam_A) + bptr [1];
+                update_weight (weight_B, delta, sam_A, bptr [1]);
+                bptr [1] = dpp->samples_B [0];
+            }
+
+            break;
+
+        default:
+            for (m = 0, k = dpp->term & (MAX_TERM - 1), bptr = buffer; bptr < eptr; bptr += 2) {
+                sam_A = dpp->samples_A [m];
+                dpp->samples_A [k] = apply_weight (weight_A, sam_A) + bptr [0];
+                update_weight (weight_A, delta, sam_A, bptr [0]);
+                bptr [0] = dpp->samples_A [k];
+
+                sam_A = dpp->samples_B [m];
+                dpp->samples_B [k] = apply_weight (weight_B, sam_A) + bptr [1];
+                update_weight (weight_B, delta, sam_A, bptr [1]);
+                bptr [1] = dpp->samples_B [k];
+
+                m = (m + 1) & (MAX_TERM - 1);
+                k = (k + 1) & (MAX_TERM - 1);
+            }
+
+            if (m) {
+                int32_t temp_samples [MAX_TERM];
+
+                memcpy (temp_samples, dpp->samples_A, sizeof (dpp->samples_A));
+
+                for (k = 0; k < MAX_TERM; k++, m++)
+                    dpp->samples_A [k] = temp_samples [m & (MAX_TERM - 1)];
+
+                memcpy (temp_samples, dpp->samples_B, sizeof (dpp->samples_B));
+
+                for (k = 0; k < MAX_TERM; k++, m++)
+                    dpp->samples_B [k] = temp_samples [m & (MAX_TERM - 1)];
+            }
+
+            break;
+
+        case -1:
+            for (bptr = buffer; bptr < eptr; bptr += 2) {
+                sam_A = bptr [0] + apply_weight (weight_A, dpp->samples_A [0]);
+                update_weight_clip (weight_A, delta, dpp->samples_A [0], bptr [0]);
+                bptr [0] = sam_A;
+                dpp->samples_A [0] = bptr [1] + apply_weight (weight_B, sam_A);
+                update_weight_clip (weight_B, delta, sam_A, bptr [1]);
+                bptr [1] = dpp->samples_A [0];
+            }
+
+            break;
+
+        case -2:
+            for (bptr = buffer; bptr < eptr; bptr += 2) {
+                sam_B = bptr [1] + apply_weight (weight_B, dpp->samples_B [0]);
+                update_weight_clip (weight_B, delta, dpp->samples_B [0], bptr [1]);
+                bptr [1] = sam_B;
+                dpp->samples_B [0] = bptr [0] + apply_weight (weight_A, sam_B);
+                update_weight_clip (weight_A, delta, sam_B, bptr [0]);
+                bptr [0] = dpp->samples_B [0];
+            }
+
+            break;
+
+        case -3:
+            for (bptr = buffer; bptr < eptr; bptr += 2) {
+                sam_A = bptr [0] + apply_weight (weight_A, dpp->samples_A [0]);
+                update_weight_clip (weight_A, delta, dpp->samples_A [0], bptr [0]);
+                sam_B = bptr [1] + apply_weight (weight_B, dpp->samples_B [0]);
+                update_weight_clip (weight_B, delta, dpp->samples_B [0], bptr [1]);
+                bptr [0] = dpp->samples_B [0] = sam_A;
+                bptr [1] = dpp->samples_A [0] = sam_B;
+            }
+
+            break;
+    }
+
+    dpp->weight_A = weight_A;
+    dpp->weight_B = weight_B;
+}
+
+#else
 
 static void decorr_stereo_pass (struct decorr_pass *dpp, int32_t *buffer, int32_t sample_count)
 {
@@ -1027,6 +1163,8 @@ static void decorr_stereo_pass (struct decorr_pass *dpp, int32_t *buffer, int32_
             break;
     }
 }
+
+#endif
 
 #ifdef FAST_DECODE
 

@@ -317,7 +317,7 @@ typedef struct bs {
 #define MAX_TERM 8
 
 struct decorr_pass {
-    int term, delta, weight_A, weight_B;
+    short term, delta, weight_A, weight_B;
     int32_t samples_A [MAX_TERM], samples_B [MAX_TERM];
     int32_t aweight_A, aweight_B;
     int32_t sum_A, sum_B;

@@ -893,11 +893,11 @@ int32_t unpack_samples (WavpackContext *wpc, int32_t *buffer, uint32_t sample_co
             bs_close_read (&wps->wvxbits);
     }
 
-//#ifndef CPU_ARM
-    if (0)
+#ifndef CPU_ARM
+    if (m)
         for (tcount = wps->num_terms, dpp = wps->decorr_passes; tcount--; dpp++)
             if (dpp->term > 0 && dpp->term <= MAX_TERM) {
-                LOGE("dpp->term %d, m: %d sample_count: %d", dpp->term, m, sample_count);
+//                LOGE("dpp->term %d, m: %d sample_count: %d", dpp->term, m, sample_count);
                 int32_t temp_A [MAX_TERM], temp_B [MAX_TERM];
                 int k;
 
@@ -910,7 +910,7 @@ int32_t unpack_samples (WavpackContext *wpc, int32_t *buffer, uint32_t sample_co
                     m = (m + 1) & (MAX_TERM - 1);
                 }
             }
-//#endif
+#endif
 
     fixup_samples (wpc, buffer, i);
 

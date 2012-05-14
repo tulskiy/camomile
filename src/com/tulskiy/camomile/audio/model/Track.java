@@ -23,7 +23,7 @@ public class Track {
     @DatabaseField
     public int channels;
     @DatabaseField
-    public long lastUpdated;
+    public long lastModified;
     @DatabaseField
     public String codec;
     @DatabaseField
@@ -38,9 +38,11 @@ public class Track {
     @DatabaseField
     public String genre;
     @DatabaseField
-    public int trackNo;
+    public String year;
     @DatabaseField
-    public int diskNo;
+    public String trackNo;
+    @DatabaseField
+    public String diskNo;
 
     public Track() {
     }

@@ -14,5 +14,10 @@
             android:layout_height="wrap_content"
             android:layout_width="fill_parent"
             android:text="Decode"/>
+    <Button
+            android:id="@+id/scan"
+            android:layout_height="wrap_content"
+            android:layout_width="fill_parent"
+            android:text="Scan"/>
 </LinearLayout>
 

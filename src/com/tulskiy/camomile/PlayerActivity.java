@@ -8,12 +8,19 @@ import android.util.Log;
 import android.view.View;
 import com.tulskiy.camomile.audio.AudioFormat;
 import com.tulskiy.camomile.audio.Decoder;
+import com.tulskiy.camomile.audio.formats.mp3.MP3FileReader;
 import com.tulskiy.camomile.audio.formats.wavpack.WavPackDecoder;
+import com.tulskiy.camomile.audio.model.Track;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.util.Arrays;
+import java.util.LinkedList;
 
 public class PlayerActivity extends Activity {
+    public static final Logger log = LoggerFactory.getLogger("camomile");
+
     /**
      * Called when the activity is first created.
      */
@@ -66,6 +73,32 @@ public class PlayerActivity extends Activity {
                     Log.d("camomile", "average decode time: " + totalTime / trials);
                 } catch (Exception e) {
                     e.printStackTrace();
+                }
+            }
+        });
+
+        View testButton = findViewById(R.id.scan);
+        testButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View view) {
+                try {
+                    File root = new File("/sdcard/Music");
+                    LinkedList<File> queue = new LinkedList<File>();
+                    LinkedList<Track> datas = new LinkedList<Track>();
+                    MP3FileReader reader = new MP3FileReader();
+                    queue.push(root);
+                    long time = System.currentTimeMillis();
+                    while (!queue.isEmpty()) {
+                        File file = queue.pop();
+
+                        if (file.isDirectory() && !new File(file, ".nomedia").exists()) {
+                            queue.addAll(Arrays.asList(file.listFiles()));
+                        } else if (file.getName().endsWith(".mp3")) {
+                            datas.push(reader.read(file));
+                        }
+                    }
+                    log.info("time to scan: {}", System.currentTimeMillis() - time);
+                } catch (Exception e) {
+                    log.error("Error", e);
                 }
             }
         });

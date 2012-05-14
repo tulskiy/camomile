@@ -5,3 +5,4 @@ libs
 local.properties
 obj
 out
+lib/*-sources.jar

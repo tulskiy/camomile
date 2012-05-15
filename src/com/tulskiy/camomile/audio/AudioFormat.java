@@ -28,11 +28,11 @@ public class AudioFormat {
         }
 
         if (channels == 1) {
-            channelConfig = android.media.AudioFormat.CHANNEL_CONFIGURATION_MONO;
+            channelConfig = android.media.AudioFormat.CHANNEL_OUT_MONO;
         } else if (channels == 2) {
-            channelConfig = android.media.AudioFormat.CHANNEL_CONFIGURATION_STEREO;
+            channelConfig = android.media.AudioFormat.CHANNEL_OUT_STEREO;
         } else {
-            channelConfig = android.media.AudioFormat.CHANNEL_CONFIGURATION_INVALID;
+            channelConfig = android.media.AudioFormat.CHANNEL_INVALID;
         }
     }
 

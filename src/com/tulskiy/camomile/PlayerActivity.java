@@ -6,20 +6,45 @@ import android.media.AudioTrack;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import com.j256.ormlite.android.apptools.OpenHelperManager;
+import com.j256.ormlite.dao.RuntimeExceptionDao;
+import com.j256.ormlite.table.TableUtils;
 import com.tulskiy.camomile.audio.AudioFormat;
 import com.tulskiy.camomile.audio.Decoder;
 import com.tulskiy.camomile.audio.formats.mp3.MP3FileReader;
 import com.tulskiy.camomile.audio.formats.wavpack.WavPackDecoder;
 import com.tulskiy.camomile.audio.model.Track;
+import com.tulskiy.camomile.db.DatabaseHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.concurrent.Callable;
 
 public class PlayerActivity extends Activity {
     public static final Logger log = LoggerFactory.getLogger("camomile");
+
+
+    private DatabaseHelper databaseHelper = null;
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (databaseHelper != null) {
+            OpenHelperManager.releaseHelper();
+            databaseHelper = null;
+        }
+    }
+
+    private DatabaseHelper getDBHelper() {
+        if (databaseHelper == null) {
+            databaseHelper =
+                    OpenHelperManager.getHelper(this, DatabaseHelper.class);
+        }
+        return databaseHelper;
+    }
 
     /**
      * Called when the activity is first created.
@@ -83,7 +108,7 @@ public class PlayerActivity extends Activity {
                 try {
                     File root = new File("/sdcard/Music");
                     LinkedList<File> queue = new LinkedList<File>();
-                    LinkedList<Track> datas = new LinkedList<Track>();
+                    final LinkedList<Track> datas = new LinkedList<Track>();
                     MP3FileReader reader = new MP3FileReader();
                     queue.push(root);
                     long time = System.currentTimeMillis();
@@ -97,6 +122,20 @@ public class PlayerActivity extends Activity {
                         }
                     }
                     log.info("time to scan: {}", System.currentTimeMillis() - time);
+                    time = System.currentTimeMillis();
+                    TableUtils.clearTable(getDBHelper().getConnectionSource(), Track.class);
+
+                    final RuntimeExceptionDao<Track, Integer> dao = getDBHelper().getRuntimeExceptionDao(Track.class);
+                    dao.callBatchTasks(new Callable<Object>() {
+                        public Object call() throws Exception {
+                            for (Track data : datas) {
+                                dao.create(data);
+                            }
+                            return null;
+                        }
+                    });
+
+                    log.info("time to insert: {}. count: {}", System.currentTimeMillis() - time, dao.countOf());
                 } catch (Exception e) {
                     log.error("Error", e);
                 }

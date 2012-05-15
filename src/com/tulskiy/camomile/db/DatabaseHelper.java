@@ -19,7 +19,7 @@ public class DatabaseHelper extends OrmLiteSqliteOpenHelper {
     private static final Logger log = LoggerFactory.getLogger("camomile");
 
     private static final String DATABASE_NAME = "camomile.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 3;
 
     private Context context;
 
@@ -43,6 +43,7 @@ public class DatabaseHelper extends OrmLiteSqliteOpenHelper {
         try {
             log.info("updating database from version {} to version {}", oldVersion, newVersion);
             TableUtils.dropTable(connectionSource, Track.class, true);
+            onCreate(database);
         } catch (SQLException e) {
             log.error("couldn't delete database", e);
             throw new RuntimeException(e);

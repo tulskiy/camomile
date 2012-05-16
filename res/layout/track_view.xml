@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/RelativeLayout1"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp"
+                android:orientation="vertical">
+
+    <TextView
+            android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentTop="true"
+            android:layout_toLeftOf="@+id/length"
+            android:paddingRight="10dp"
+            style="@style/title"
+            />
+
+    <TextView
+            android:id="@+id/length"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBaseline="@+id/title"
+            android:layout_alignBottom="@+id/title"
+            android:layout_alignParentRight="true"
+            android:text="length"
+            android:textAppearance="@style/regular"
+            android:textStyle="bold"/>
+
+    <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/title"
+            >
+        <TextView
+                android:id="@+id/artist"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.45"
+                android:scrollHorizontally="true"
+                android:singleLine="true"
+                android:text="artist"
+                android:textAppearance="?android:attr/textAppearanceSmall"/>
+
+        <TextView
+                android:id="@+id/album"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.65"
+                android:gravity="right"
+                android:scrollHorizontally="true"
+                android:singleLine="true"
+                android:text="album"
+                android:textAppearance="?android:attr/textAppearanceSmall"/>
+    </LinearLayout>
+
+
+</RelativeLayout>

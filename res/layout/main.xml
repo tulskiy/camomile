@@ -19,5 +19,11 @@
             android:layout_height="wrap_content"
             android:layout_width="fill_parent"
             android:text="Scan"/>
+
+    <Button
+            android:id="@+id/list"
+            android:layout_height="wrap_content"
+            android:layout_width="fill_parent"
+            android:text="List"/>
 </LinearLayout>
 

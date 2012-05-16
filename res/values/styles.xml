@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="title" parent="@android:style/TextAppearance">
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">#FF99CC</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:text">title</item>
+    </style>
+
+    <style name="regular" parent="@android:style/TextAppearance">
+        <item name="android:textSize">15sp</item>
+        <item name="android:singleLine">true</item>
+    </style>
+</resources>

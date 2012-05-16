@@ -1,6 +1,7 @@
 package com.tulskiy.camomile;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.Bundle;
@@ -139,6 +140,14 @@ public class PlayerActivity extends Activity {
                 } catch (Exception e) {
                     log.error("Error", e);
                 }
+            }
+        });
+
+        View list = findViewById(R.id.list);
+        list.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Intent intent = new Intent(PlayerActivity.this, TrackListActivity.class);
+                startActivity(intent);
             }
         });
     }

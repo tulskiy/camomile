@@ -8,7 +8,7 @@ import com.j256.ormlite.field.DatabaseField;
  */
 public class Track {
     @DatabaseField(generatedId = true)
-    public int id;
+    public int _id;
 
     @DatabaseField
     public String path;

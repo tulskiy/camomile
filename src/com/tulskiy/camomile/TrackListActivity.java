@@ -1,16 +1,20 @@
 package com.tulskiy.camomile;
 
+import android.content.Context;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.CursorAdapter;
 import android.widget.TextView;
 import com.j256.ormlite.android.apptools.OrmLiteBaseListActivity;
 import com.j256.ormlite.dao.RuntimeExceptionDao;
 import com.tulskiy.camomile.audio.model.Track;
 import com.tulskiy.camomile.db.DatabaseHelper;
 
+import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -21,37 +25,70 @@ public class TrackListActivity extends OrmLiteBaseListActivity<DatabaseHelper> {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         final RuntimeExceptionDao<Track, Integer> dao = getHelper().getRuntimeExceptionDao(Track.class);
+        Cursor query = getHelper().getWritableDatabase().query(true, "track", new String[]{"rowid _id", "album", "artist"}, null, null, "album", null, "album", null);
 
-        final List<Track> tracks = dao.queryForAll();
-        setListAdapter(new BaseAdapter() {
-            public int getCount() {
-                return tracks.size();
-            }
-
-            public Object getItem(int position) {
-                return tracks.get(position);
-            }
-
-            public long getItemId(int position) {
-                return tracks.get(position).id;
-            }
-
-            public View getView(int position, View convertView, ViewGroup parent) {
+        query.moveToFirst();
+        setListAdapter(new CursorAdapter(this, query) {
+            @Override
+            public View newView(Context context, Cursor cursor, ViewGroup viewGroup) {
                 LayoutInflater layoutInflater = getLayoutInflater();
-                View view = layoutInflater.inflate(R.layout.track_view, parent, false);
-                TextView title = (TextView) view.findViewById(R.id.title);
-                Track track = tracks.get(position);
-                title.setText(track.title);
-                TextView artist = (TextView) view.findViewById(R.id.artist);
-                artist.setText(track.artist);
-                TextView time = (TextView) view.findViewById(R.id.length);
-                time.setText(samplesToTime(track.totalSamples, track.sampleRate));
-                TextView album = (TextView) view.findViewById(R.id.album);
-                album.setText(track.album);
+                View view = layoutInflater.inflate(R.layout.track_view, viewGroup, false);
+                populate(cursor, view);
 
                 return view;
             }
+
+            private void populate(Cursor cursor, View view) {
+                TextView title = (TextView) view.findViewById(R.id.title);
+                title.setText(cursor.getString(1));
+                TextView artist = (TextView) view.findViewById(R.id.artist);
+                artist.setText(cursor.getString(2));
+                TextView time = (TextView) view.findViewById(R.id.length);
+                time.setText(null);
+                TextView album = (TextView) view.findViewById(R.id.album);
+                album.setText(null);
+            }
+
+            @Override
+            public void bindView(View view, Context context, Cursor cursor) {
+                populate(cursor, view);
+            }
         });
+//        try {
+//            final List<Track> tracks;
+//            tracks = dao.queryBuilder().orderByRaw("artist, year, album, trackNo, diskNo").query();
+//            setListAdapter(new BaseAdapter() {
+//                public int getCount() {
+//                    return tracks.size();
+//                }
+//
+//                public Object getItem(int position) {
+//                    return tracks.get(position);
+//                }
+//
+//                public long getItemId(int position) {
+//                    return tracks.get(position).id;
+//                }
+//
+//                public View getView(int position, View convertView, ViewGroup parent) {
+//                    LayoutInflater layoutInflater = getLayoutInflater();
+//                    View view = layoutInflater.inflate(R.layout.track_view, parent, false);
+//                    TextView title = (TextView) view.findViewById(R.id.title);
+//                    Track track = tracks.get(position);
+//                    title.setText(track.title);
+//                    TextView artist = (TextView) view.findViewById(R.id.artist);
+//                    artist.setText(track.artist == null ? "Unknown artist" : track.artist);
+//                    TextView time = (TextView) view.findViewById(R.id.length);
+//                    time.setText(samplesToTime(track.totalSamples, track.sampleRate));
+//                    TextView album = (TextView) view.findViewById(R.id.album);
+//                    album.setText(track.album == null ? "Unknown album" : track.album);
+//
+//                    return view;
+//                }
+//            });
+//        } catch (SQLException e) {
+//            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+//        }
     }
 
     public static String formatSeconds(double seconds) {

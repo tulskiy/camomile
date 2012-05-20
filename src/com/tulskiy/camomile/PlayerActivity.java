@@ -12,6 +12,8 @@ import com.j256.ormlite.dao.RuntimeExceptionDao;
 import com.j256.ormlite.table.TableUtils;
 import com.tulskiy.camomile.audio.AudioFormat;
 import com.tulskiy.camomile.audio.Decoder;
+import com.tulskiy.camomile.audio.formats.flac.FLACDecoder;
+import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
 import com.tulskiy.camomile.audio.formats.mp3.MP3FileReader;
 import com.tulskiy.camomile.audio.formats.wavpack.WavPackDecoder;
 import com.tulskiy.camomile.audio.model.Track;
@@ -75,11 +77,11 @@ public class PlayerActivity extends Activity {
                     long totalTime = 0;
                     int trials = 5;
                     for (int i = 0; i < trials; i++) {
-                        Decoder decoder = new WavPackDecoder();
+                        Decoder decoder = new MP3Decoder();
 //                        FileOutputStream fos = new FileOutputStream("/sdcard/output.wav");
 //                        fos.write(new byte[44]);
                         long time = System.currentTimeMillis();
-                        if (decoder.open(new File("/sdcard/Music/05 Shadow Of The Day.wv"))) {
+                        if (decoder.open(new File("/sdcard/Music/Tiga - Shoes.mp3"))) {
                             byte[] buffer = new byte[65536];
                             while (true) {
                                 int length = decoder.decode(buffer);
@@ -155,8 +157,8 @@ public class PlayerActivity extends Activity {
     private static class PlayerThread implements Runnable {
         public void run() {
             try {
-                Decoder decoder = new WavPackDecoder();
-                if (decoder.open(new File("/sdcard/Music/05 Shadow Of The Day.wv"))) {
+                Decoder decoder = new FLACDecoder();
+                if (decoder.open(new File("/sdcard/test/01 - Adele - Rolling In The Deep.flac"))) {
                     AudioFormat audioFormat = decoder.getAudioFormat();
                     int minSize = 4 * AudioTrack.getMinBufferSize(
                             audioFormat.getSampleRate(),

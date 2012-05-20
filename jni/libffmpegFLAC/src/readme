@@ -1,0 +1,7 @@
+A slight tweek of the LGPL ffmpeg FLAC decoder removed from the RockBox firmware for use with openHiFi.
+
+ARM asm does not work with thumb2 as written so it cannot be used for openHiFi (Cortex M3)
+
+The makefile makes a static library for openHiFi.
+
+This library and 2 headers linked to by openHiFi.

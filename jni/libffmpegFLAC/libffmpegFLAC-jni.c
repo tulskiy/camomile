@@ -2,6 +2,7 @@
 #include <jni.h>
 #include <stdio.h>
 #include <android/log.h>
+#include <stdbool.h>
 #include "src/decoder.h"
 
 #define LOG(x...) __android_log_print(ANDROID_LOG_DEBUG, "camomile", x)
@@ -9,163 +10,200 @@
 
 #define JNI_FUNCTION(name) Java_com_tulskiy_camomile_audio_formats_flac_FLACDecoder_ ## name
 
-int parceFLACmetadata(FILE* input, FLACContext* context);
+#define MAX_SUPPORTED_SEEKTABLE_SIZE 5000
+
+typedef struct FLACseekpoints {
+    uint32_t sample;
+    uint32_t offset;
+    uint16_t blocksize;
+} FLACseekpoints;
+
+typedef struct ContextHolder {
+    FLACContext* fc;
+    FLACseekpoints seekpoints[MAX_SUPPORTED_SEEKTABLE_SIZE];
+    int nseekpoints;
+    int32_t decoded0[MAX_BLOCKSIZE];
+    int32_t decoded1[MAX_BLOCKSIZE];
+    int8_t read_buf[MAX_FRAMESIZE];
+    FILE* input;
+} ContextHolder;
+
+bool flac_init(ContextHolder* context);
 
 jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray formatArray) {
-    FLACContext* context = malloc(sizeof(FLACContext));
+    ContextHolder* context = malloc(sizeof(ContextHolder));
+    memset(context, 0, sizeof(ContextHolder));
+
+    FLACContext* fc = malloc(sizeof(FLACContext));
+    context->fc = fc;
 
     const char* fileName = (*env)->GetStringUTFChars(env, file, NULL);
-    FILE* input = fopen(fileName, "r");
+    context->input = fopen(fileName, "r");
     (*env)->ReleaseStringUTFChars(env, file, fileName);
 
-    if (!input) {
+    if (!context->input) {
         LOGE("could not open file");
         return 0;
     }
 
-    parceFLACmetadata(input, context);
+    if (!flac_init(context)) {
+        LOGE("flac_init returned false");
+        return 0;
+    }
 
     jint* format = (jint*)(*env)->GetIntArrayElements(env, formatArray, 0);
-    format[0] = context->samplerate;
-    format[1] = context->channels;
-    format[2] = context->bps;
+    format[0] = fc->samplerate;
+    format[1] = fc->channels;
+    format[2] = fc->bps;
     (*env)->ReleaseIntArrayElements(env, formatArray, format, 0);
 
     return (jint) context;
 }
 
 void JNI_FUNCTION(seek) (JNIEnv* env, jobject obj, jint handle, jint offset) {
-    FLACContext* context = (FLACContext*) handle;
+    ContextHolder* context = (ContextHolder*) handle;
 }
 
+void yield() {}
+
 jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buffer, jint size) {
-    FLACContext* context = (FLACContext*) handle;
-    jbyte* target = (jbyte*)(*env)->GetByteArrayElements(env, buffer, 0);
+    ContextHolder* context = (ContextHolder*) handle;
+    jshort* target = (jshort*)(*env)->GetByteArrayElements(env, buffer, 0);
 
+    int length = fread(context->read_buf, 1, MAX_FRAMESIZE, context->input);
+    int sampleShift = FLAC_OUTPUT_DEPTH - context->bps;
+    if (length == 0)
+        return -1;
 
+    if (flac_decode_frame(context->fc, context->decoded0, context->decoded1, context->read_buf, length, yield) < 0) {
+        return -1;
+    }
+
+    int i = context->fc->sample_skip;
+
+    while (i < context->fc->blocksize) {
+    }
 
     (*env)->ReleaseByteArrayElements(env, buffer, target, 0);
-    return 0;
+    return -1;
 }
 
 void JNI_FUNCTION(close) (JNIEnv* env, jobject obj, jint handle) {
-    FLACContext* context = (FLACContext*) handle;
+    ContextHolder* context = (ContextHolder*) handle;
+    free(context->fc);
     free(context);
 }
 
-int parceFLACmetadata(FILE* FLACfile, FLACContext* context)
-{
-	uint s1 = 0;
-	int metaDataFlag = 1;
-	char metaDataChunk[128];
-	unsigned long metaDataBlockLength = 0;
-	char* tagContents;
+bool flac_init(ContextHolder* context) {
+    unsigned char buf[255];
+    bool found_streaminfo = false;
+    uint32_t seekpoint_hi,seekpoint_lo;
+    uint32_t offset_hi,offset_lo;
+    uint16_t blocksize;
+    int endofmetadata = 0;
+    uint32_t blocklength;
+    FLACContext* fc = context->fc;
+    FILE* input = context->input;
 
-	s1 = fread(metaDataChunk, 1, 4, FLACfile);
+    memset(fc, 0, sizeof(FLACContext));
 
-	if(s1 != 4)
-	{
-		printf("Read failure\n");
-		fclose(FLACfile);
-		return 1;
-	}
+    fc->sample_skip = 0;
 
-	if(memcmp(metaDataChunk, "fLaC", 4) != 0)
-	{
-		printf("Not a FLAC file\n");
-		fclose(FLACfile);
-		return 1;
-	}
+    if (fread(buf, 1, 4, input) < 4) {
+        return false;
+    }
 
-	// Now we are at the stream block
-	// Each block has metadata header of 4 bytes
-	do
-	{
-		s1 = fread(metaDataChunk, 1, 4, FLACfile);
+    if (memcmp(buf, "fLaC", 4) != 0) {
+        LOGE("Not a valid FLAC file!");
+        return false;
+    }
+    fc->metadatalength += 4;
+    while (!endofmetadata) {
+        if (fread(buf, 1, 4, input) < 4) {
+            return false;
+        }
 
-		if(s1 != 4)
-		{
-			printf("Read failure\n");
-			fclose(FLACfile);
-			return 1;
-		}
+        endofmetadata = (buf[0]&0x80);
+        blocklength = (buf[1] << 16) | (buf[2] << 8) | buf[3];
+        fc->metadatalength += blocklength+4;
+        LOG("found metadata block size: %d", blocklength, endofmetadata);
 
-		//Check if last chunk
-		if(metaDataChunk[0] & 0x80) metaDataFlag = 0;
+        if ((buf[0] & 0x7f) == 0) { /* 0 is the STREAMINFO block */
+            LOG("found streaminfo block");
+            if (fread(buf, 1, blocklength, input) < blocklength) return false;
 
-		metaDataBlockLength = (metaDataChunk[1] << 16) | (metaDataChunk[2] << 8) | metaDataChunk[3];
+            fc->min_blocksize = (buf[0] << 8) | buf[1];
+            int max_blocksize = (buf[2] << 8) | buf[3];
+            if (max_blocksize > MAX_BLOCKSIZE)
+            {
+                LOGE("FLAC: Maximum blocksize is too large (%d > %d)\n",
+                     max_blocksize, MAX_BLOCKSIZE);
+                return false;
+            }
+            fc->max_blocksize = max_blocksize;
+            fc->min_framesize = (buf[4] << 16) | (buf[5] << 8) | buf[6];
+            fc->max_framesize = (buf[7] << 16) | (buf[8] << 8) | buf[9];
+            fc->samplerate = (buf[10] << 12) | (buf[11] << 4)
+                             | ((buf[12] & 0xf0) >> 4);
+            fc->channels = ((buf[12]&0x0e)>>1) + 1;
+            fc->bps = (((buf[12]&0x01) << 4) | ((buf[13]&0xf0)>>4) ) + 1;
 
-		//STREAMINFO block
-		if((metaDataChunk[0] & 0x7F) == 0)
-		{
+            /* totalsamples is a 36-bit field, but we assume <= 32 bits are
+               used */
+            fc->totalsamples = (buf[14] << 24) | (buf[15] << 16)
+                               | (buf[16] << 8) | buf[17];
 
-			if(metaDataBlockLength > 128)
-			{
-				printf("Metadata buffer too small\n");
-				fclose(FLACfile);
-				return 1;
-			}
+            /* Calculate track length (in ms) and estimate the bitrate
+               (in kbit/s) */
+            fc->length = ((int64_t) fc->totalsamples * 1000) / fc->samplerate;
 
-			s1 = fread(metaDataChunk, 1, metaDataBlockLength, FLACfile);
+            found_streaminfo=true;
+        } else if ((buf[0] & 0x7f) == 3) { /* 3 is the SEEKTABLE block */
+            LOG("found SEEKTABLE block");
 
-			if(s1 != metaDataBlockLength)
-			{
-				printf("Read failure\n");
-				fclose(FLACfile);
-				return 1;
-			}
-			/*
-			<bits> Field in STEAMINFO
-			<16> min block size (samples)
-			<16> max block size (samples)
-			<24> min frams size (bytes)
-			<24> max frams size (bytes)
-			<20> Sample rate (Hz)
-			<3> (number of channels)-1
-			<5> (bits per sample)-1.
-			<36> Total samples in stream.
-			<128> MD5 signature of the unencoded audio data.
-			*/
+            while ((context->nseekpoints < MAX_SUPPORTED_SEEKTABLE_SIZE) &&
+                   (blocklength >= 18)) {
+                if (fread(buf, 1, 18, input) < 18) return false;
+                blocklength -= 18;
 
-			context->min_blocksize = (metaDataChunk[0] << 8) | metaDataChunk[1];
-			context->max_blocksize = (metaDataChunk[2] << 8) | metaDataChunk[3];
-			context->min_framesize = (metaDataChunk[4] << 16) | (metaDataChunk[5] << 8) | metaDataChunk[6];
-			context->max_framesize = (metaDataChunk[7] << 16) | (metaDataChunk[8] << 8) | metaDataChunk[9];
-			context->samplerate = (metaDataChunk[10] << 12) | (metaDataChunk[11] << 4) | ((metaDataChunk[12] & 0xf0) >> 4);
-			context->channels = ((metaDataChunk[12] & 0x0e) >> 1) + 1;
-			context->bps = (((metaDataChunk[12] & 0x01) << 4) | ((metaDataChunk[13] & 0xf0)>>4) ) + 1;
+                seekpoint_hi = (buf[0] << 24) | (buf[1] << 16) |
+                               (buf[2] << 8) | buf[3];
+                seekpoint_lo = (buf[4] << 24) | (buf[5] << 16) |
+                               (buf[6] << 8) | buf[7];
+                offset_hi = (buf[8] << 24) | (buf[9] << 16) |
+                            (buf[10] << 8) | buf[11];
+                offset_lo = (buf[12] << 24) | (buf[13] << 16) |
+                            (buf[14] << 8) | buf[15];
 
-			//This field in FLAC context is limited to 32-bits
-			context->totalsamples = (metaDataChunk[14] << 24) | (metaDataChunk[15] << 16) | (metaDataChunk[16] << 8) | metaDataChunk[17];
-		} else {
-          			if(!fseek(FLACfile, SEEK_CUR, metaDataBlockLength))
-          			{
-          				printf("File Seek Failed\n");
-          				fclose(FLACfile);
-          				return 1;
-          			}
-          		}
-	} while(metaDataFlag);
+                blocksize = (buf[16] << 8) | buf[17];
 
+                /* Only store seekpoints where the high 32 bits are zero */
+                if ((seekpoint_hi == 0) && (seekpoint_lo != 0xffffffff) &&
+                    (offset_hi == 0)) {
+                        context->seekpoints[context->nseekpoints].sample=seekpoint_lo;
+                        context->seekpoints[context->nseekpoints].offset=offset_lo;
+                        context->seekpoints[context->nseekpoints].blocksize=blocksize;
+                        context->nseekpoints++;
+                }
+            }
+            LOG("found %d seekpoints", context->nseekpoints);
+            /* Skip any unread seekpoints */
+            fseek(input, blocklength, SEEK_CUR);
+        } else {
+            /* Skip to next metadata block */
+            fseek(input, blocklength, SEEK_CUR);
+        }
+    }
 
-	// track length in ms
-	context->length = (context->totalsamples / context->samplerate) * 1000;
-	// file size in bytes
-	context->filesize = 1000;
-	// current offset is end of metadata in bytes
-	context->metadatalength = ftell(FLACfile);
-	// bitrate of file
-	context->bitrate = ((context->filesize - context->metadatalength) * 8) / context->length;
+   if (found_streaminfo) {
+       fseek(input, 0, SEEK_END);
+       fc->filesize = ftell(input);
+       fseek(input, fc->metadatalength, SEEK_SET);
 
-	fclose(FLACfile);
-	return 0;
-
-}
-
-
-
-//Just a dummy function for the flac_decode_frame
-void yield()
-{
-	//Do nothing
+       fc->bitrate = ((int64_t) (fc->filesize - fc->metadatalength) * 8)
+                     / fc->length;
+       return true;
+   } else {
+       return false;
+   }
 }

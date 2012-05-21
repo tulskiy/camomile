@@ -9,7 +9,8 @@ LOCAL_MODULE := libffmpegFLAC
 LOCAL_SRC_FILES = \
 	src/decoder.c \
 	src/bitstream.c \
-	src/tables.c
+	src/tables.c \
+	src/arm.s
 
 include $(BUILD_STATIC_LIBRARY)
 

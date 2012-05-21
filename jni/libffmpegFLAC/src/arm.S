@@ -19,8 +19,6 @@
  *
  ****************************************************************************/
 
-//#include "config.h"
-
 /* The following is an assembler optimised version of the LPC filtering
    routines needed for FLAC decoding. It is optimised for use with ARM 
    processors.
@@ -268,4 +266,3 @@ lpc_decode_arm:
 
 .exit:
     ldmia sp!, { r4-r11, pc }
-

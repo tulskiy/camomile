@@ -10,7 +10,7 @@ LOCAL_SRC_FILES = \
 	src/decoder.c \
 	src/bitstream.c \
 	src/tables.c \
-	src/arm.s
+	src/arm.S
 
 include $(BUILD_STATIC_LIBRARY)
 

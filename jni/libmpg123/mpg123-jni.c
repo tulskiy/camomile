@@ -16,9 +16,9 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
 
     const char* fileName = (*env)->GetStringUTFChars(env, file, NULL);
     int ret = mpg123_open(mh, fileName);
+    LOG("Opening file %s. Result: %s", fileName, mpg123_plain_strerror(ret));
     (*env)->ReleaseStringUTFChars(env, file, fileName);
 
-    LOG("Opening file %s. Result: %s", fileName, mpg123_plain_strerror(ret));
 
     if (ret == MPG123_OK) {
         // decode a bit to get new format

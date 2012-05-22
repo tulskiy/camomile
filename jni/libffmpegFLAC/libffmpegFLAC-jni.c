@@ -28,6 +28,7 @@ typedef struct ContextHolder {
     FILE* input;
     int bytesleft;
     int write_pos;
+    int frame;
 } ContextHolder;
 
 bool flac_init(ContextHolder* context);
@@ -70,31 +71,29 @@ void yield() {}
 
 jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buffer, jint size) {
     ContextHolder* context = (ContextHolder*) handle;
-    jbyte* target = (jbyte*)(*env)->GetByteArrayElements(env, buffer, 0);
+    jshort* target = (jshort*)(*env)->GetByteArrayElements(env, buffer, 0);
 
     int length = fread(&context->read_buf[context->bytesleft], 1, MAX_FRAMESIZE - context->bytesleft, context->input);
     context->bytesleft += length;
-//    LOG("read %d bytes", length);
+    LOG("read %d bytes", length);
     if (context->bytesleft <= 0)
         return -1;
 
-    int ret = flac_decode_frame(context->fc, context->decoded0, context->decoded1, context->read_buf, length, yield);
+    int ret = flac_decode_frame(context->fc, context->decoded0, context->decoded1, context->read_buf, context->bytesleft, yield);
     if (ret < 0) {
         LOG("flac decode returned %d", ret);
         return -1;
     }
-
-    int sampleShift = FLAC_OUTPUT_DEPTH-context->fc->bps;
+    LOG("Frame: %d, blocksize %d", context->frame++, context->fc->blocksize);
+//    int sampleShift = FLAC_OUTPUT_DEPTH-context->fc->bps;
     int pos = 0;
     if(context->fc->channels == 2) {
         for(int sample = context->fc->sample_skip; sample < context->fc->blocksize; sample++) {
-            int32_t tmp = context->decoded0[sample] >> sampleShift;
-    		target[pos++] = tmp & 0xFF;
-    		target[pos++] = tmp & 0xFF00 >> 8;
+            int32_t tmp = context->decoded0[sample];
+    		target[pos++] = tmp & 0xFFFF;
 
-    		tmp = context->decoded1[sample] >> sampleShift;
-    		target[pos++] = tmp & 0xFF;
-    		target[pos++] = tmp & 0xFF00 >> 8;
+    		tmp = context->decoded1[sample];
+    		target[pos++] = tmp & 0xFFFF;
     	}
     } /*else if(channels == 1) {
     	for(sample = wide_sample = 0; wide_sample < wide_samples; wide_sample++)
@@ -109,8 +108,8 @@ jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buf
 
     context->fc->sample_skip = 0;
 
-    (*env)->ReleaseByteArrayElements(env, buffer, target, 0);
-    return pos;
+    (*env)->ReleaseByteArrayElements(env, buffer, (jbyte*)target, 0);
+    return pos * 2;
 }
 
 void JNI_FUNCTION(close) (JNIEnv* env, jobject obj, jint handle) {

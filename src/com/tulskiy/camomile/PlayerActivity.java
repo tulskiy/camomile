@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.concurrent.Callable;
@@ -75,23 +76,24 @@ public class PlayerActivity extends Activity {
             public void onClick(View view) {
                 try {
                     long totalTime = 0;
-                    int trials = 5;
+                    int trials = 1;
                     for (int i = 0; i < trials; i++) {
-                        Decoder decoder = new MP3Decoder();
-//                        FileOutputStream fos = new FileOutputStream("/sdcard/output.wav");
-//                        fos.write(new byte[44]);
+                        Decoder decoder = new FLACDecoder();
+                        FileOutputStream fos = new FileOutputStream("/sdcard/output.wav");
+                        fos.write(new byte[44]);
                         long time = System.currentTimeMillis();
-                        if (decoder.open(new File("/sdcard/Music/Tiga - Shoes.mp3"))) {
+                        int count = 0;
+                        if (decoder.open(new File("/sdcard/test/01 - Adele - Rolling In The Deep.flac"))) {
                             byte[] buffer = new byte[65536];
                             while (true) {
                                 int length = decoder.decode(buffer);
                                 if (length == -1) {
                                     break;
                                 }
-//                                fos.write(buffer, 0, length);
+                                fos.write(buffer, 0, length);
                             }
                             decoder.close();
-//                            fos.close();
+                            fos.close();
                         }
                         long result = System.currentTimeMillis() - time;
                         totalTime += result;

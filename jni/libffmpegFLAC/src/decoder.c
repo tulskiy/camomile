@@ -527,20 +527,20 @@ int flac_decode_frame(FLACContext *s,
 
     yield();
 
-    scale=FLAC_OUTPUT_DEPTH-s->bps;
+//    scale=FLAC_OUTPUT_DEPTH-s->bps;
     switch(s->decorrelation)
     {
         case INDEPENDENT:
             if (s->channels==1) {;
                 for (i = 0; i < s->blocksize; i++)
                 {
-                    decoded0[i] = decoded0[i] << scale;
+                    decoded0[i] = decoded0[i];
                 }
             } else {
                 for (i = 0; i < s->blocksize; i++)
                 {
-                    decoded0[i] = decoded0[i] << scale;
-                    decoded1[i] = decoded1[i] << scale;
+                    decoded0[i] = decoded0[i];
+                    decoded1[i] = decoded1[i];
                 }
             }
             break;
@@ -548,16 +548,16 @@ int flac_decode_frame(FLACContext *s,
             //assert(s->channels == 2);
             for (i = 0; i < s->blocksize; i++)
             {
-                decoded1[i] = (decoded0[i] - decoded1[i]) << scale;
-                decoded0[i] = decoded0[i] << scale;
+                decoded1[i] = (decoded0[i] - decoded1[i]);
+                decoded0[i] = decoded0[i];
             }
             break;
         case RIGHT_SIDE:
             //assert(s->channels == 2);
             for (i = 0; i < s->blocksize; i++)
             {
-                decoded0[i] = (decoded0[i] + decoded1[i]) << scale;
-                decoded1[i] = decoded1[i] << scale;
+                decoded0[i] = (decoded0[i] + decoded1[i]);
+                decoded1[i] = decoded1[i];
             }
             break;
         case MID_SIDE:
@@ -570,15 +570,15 @@ int flac_decode_frame(FLACContext *s,
 
 #if 1 //needs to be checked but IMHO it should be binary identical
                 mid -= side>>1;
-                decoded0[i] = (mid + side) << scale;
-                decoded1[i] = mid << scale;
+                decoded0[i] = (mid + side);
+                decoded1[i] = mid;
 #else
                 
                 mid <<= 1;
                 if (side & 1)
                     mid++;
-                decoded0[i] = ((mid + side) >> 1) << scale;
-                decoded1[i] = ((mid - side) >> 1) << scale;
+                decoded0[i] = ((mid + side) >> 1);
+                decoded1[i] = ((mid - side) >> 1);
 #endif
             }
             break;

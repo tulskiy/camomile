@@ -6,3 +6,6 @@ local.properties
 obj
 out
 lib/*-sources.jar
+.classpath
+.project
+bin

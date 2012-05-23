@@ -98,7 +98,9 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
 void JNI_FUNCTION(seek) (JNIEnv* env, jobject obj, jint handle, jint offset) {
     ContextHolder* ctx = (ContextHolder*) handle;
 
-    flac_seek(ctx, offset);
+    if (!flac_seek(ctx, offset)) {
+        LOGE("flac seek to sample %d returned false!", offset);
+    }
 }
 
 void yield() {}
@@ -108,14 +110,16 @@ jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buf
     jbyte* target = (jbyte*)(*env)->GetByteArrayElements(env, buffer, 0);
     jshort* target_16b = (jshort*) target;
 
-    fill_buffer(ctx);
-    if (ctx->bytesleft <= 0)
-        return -1;
+    if (!ctx->fc->sample_skip) {
+        fill_buffer(ctx);
+        if (ctx->bytesleft <= 0)
+            return -1;
 
-    int ret = flac_decode_frame(ctx->fc, ctx->decoded0, ctx->decoded1, ctx->read_buf, ctx->bytesleft, yield);
-    if (ret < 0) {
-        LOGE("flac decode returned %d", ret);
-        return -1;
+        int ret = flac_decode_frame(ctx->fc, ctx->decoded0, ctx->decoded1, ctx->read_buf, ctx->bytesleft, yield);
+        if (ret < 0) {
+            LOGE("flac decode returned %d", ret);
+            return -1;
+        }
     }
 //    LOG("Frame: %d, blocksize %d", ctx->frame++, ctx->fc->blocksize);
 //    LOG("sample: %d, totalsamples: %d", ctx->fc->samplenumber, ctx->fc->totalsamples);
@@ -141,7 +145,6 @@ jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buf
 
     int consumed = ctx->fc->gb.index/8;
 //    LOG("consumed %d bytes", consumed);
-    ctx->bytesleft -= consumed;
     advance_buffer(ctx, consumed);
 
     ctx->fc->sample_skip = 0;
@@ -272,12 +275,18 @@ bool flac_init(ContextHolder* ctx) {
 }
 
 void advance_buffer(ContextHolder* ctx, int amount) {
+    ctx->bytesleft -= amount;
     memmove(ctx->read_buf, &ctx->read_buf[amount], ctx->bytesleft);
 }
 
 void fill_buffer(ContextHolder* ctx) {
     ctx->bytesleft += fread(&ctx->read_buf[ctx->bytesleft], 1, MAX_FRAMESIZE - ctx->bytesleft, ctx->input);
-    //    LOG("read %d bytes, bytesleft: %d", length, ctx->bytesleft);
+//    LOG("read %d bytes, bytesleft: %d", length, ctx->bytesleft);
+}
+
+int seek(ContextHolder* ctx, int offset) {
+    ctx->bytesleft = 0;
+    return !fseek(ctx->input, offset, SEEK_SET);
 }
 
 /* Synchronize to next frame in stream - adapted from libFLAC 1.1.3b2 */
@@ -345,6 +354,7 @@ bool flac_seek(ContextHolder* ctx, uint32_t target_sample) {
     uint32_t this_frame_sample = fc->samplenumber;
     unsigned this_block_size = fc->blocksize;
     bool needs_seek = true, first_seek = true;
+    ctx->fc->samplenumber = 0;
 
     /* We are just guessing here. */
     if(fc->max_framesize > 0)
@@ -385,6 +395,8 @@ bool flac_seek(ContextHolder* ctx, uint32_t target_sample) {
     }
 
     while(1) {
+//        LOG("sample bounds: %d to %d", lower_bound_sample, upper_bound_sample);
+//        LOG("file bounds: %d to %d", lower_bound, upper_bound);
         /* Check if bounds are still ok. */
         if(lower_bound_sample >= upper_bound_sample ||
            lower_bound > upper_bound) {
@@ -404,8 +416,8 @@ bool flac_seek(ContextHolder* ctx, uint32_t target_sample) {
             if(pos < (off_t)lower_bound)
                 pos = (off_t)lower_bound;
         }
-
-        if(fseek(ctx->input, pos, SEEK_SET))
+//        LOG("seek to position: %d", pos);
+        if(!seek(ctx, pos))
             return false;
 
         fill_buffer(ctx);
@@ -429,7 +441,7 @@ bool flac_seek(ContextHolder* ctx, uint32_t target_sample) {
                     got_a_frame = true;
             }
             if(!got_a_frame) {
-                fseek(ctx->input, orig_pos, SEEK_SET);
+                seek(ctx, orig_pos);
                 return false;
             }
         }
@@ -437,8 +449,9 @@ bool flac_seek(ContextHolder* ctx, uint32_t target_sample) {
         this_frame_sample = fc->samplenumber;
         this_block_size = fc->blocksize;
 
+//        LOG("Found frame starting with sample: %d", this_frame_sample);
         if(target_sample >= this_frame_sample
-           && target_sample < this_frame_sample+this_block_size) {
+           && target_sample <= this_frame_sample+this_block_size) {
             /* Found the frame containing the target sample. */
             fc->sample_skip = target_sample - this_frame_sample;
             break;
@@ -447,7 +460,7 @@ bool flac_seek(ContextHolder* ctx, uint32_t target_sample) {
         if(this_frame_sample + this_block_size >= upper_bound_sample &&
            !first_seek) {
             if(pos == (off_t)lower_bound || !needs_seek) {
-                fseek(ctx->input, orig_pos, SEEK_SET);
+                seek(ctx, orig_pos);
                 return false;
             }
             /* Our last move backwards wasn't big enough, try again. */
@@ -461,7 +474,7 @@ bool flac_seek(ContextHolder* ctx, uint32_t target_sample) {
 
         /* Make sure we are not seeking in a corrupted stream */
         if(this_frame_sample < lower_bound_sample) {
-            fseek(ctx->input, orig_pos, SEEK_SET);
+            seek(ctx, orig_pos);
             return false;
         }
 
@@ -470,17 +483,17 @@ bool flac_seek(ContextHolder* ctx, uint32_t target_sample) {
         /* We need to narrow the search. */
         if(target_sample < this_frame_sample) {
             upper_bound_sample = this_frame_sample;
-            upper_bound = ftell(ctx->input);
+            upper_bound = ftell(ctx->input) - (ctx->bytesleft);
         }
         else { /* Target is beyond this frame. */
             /* We are close, continue in decoding next frames. */
             if(target_sample < this_frame_sample + 4*this_block_size) {
-                pos = ftell(ctx->input) + fc->framesize;
+                pos = ftell(ctx->input) - ctx->bytesleft;
                 needs_seek = false;
             }
 
             lower_bound_sample = this_frame_sample + this_block_size;
-            lower_bound = ftell(ctx->input) + fc->framesize;
+            lower_bound = ftell(ctx->input) - ctx->bytesleft;
         }
     }
 

@@ -3,6 +3,7 @@ package com.tulskiy.camomile.audio;
 import android.content.res.AssetManager;
 import android.test.InstrumentationTestCase;
 import android.util.Log;
+import com.tulskiy.camomile.audio.formats.flac.FLACDecoder;
 import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
 import com.tulskiy.camomile.audio.formats.ogg.VorbisDecoder;
 import com.tulskiy.camomile.audio.formats.wavpack.WavPackDecoder;
@@ -31,6 +32,10 @@ public class DecoderTest extends InstrumentationTestCase {
         new Tester(new WavPackDecoder(), "testfiles/wavpack/sample.wv", 29400).start();
     }
 
+    public void testFLAC() throws IOException {
+        new Tester(new FLACDecoder(), "testfiles/flac/sample.flac", 29400).start();
+    }
+
     class Tester {
         private Decoder decoder;
         private String fileName;
@@ -57,8 +62,8 @@ public class DecoderTest extends InstrumentationTestCase {
             int[] testOffsets = new int[10];
             testOffsets[0] = 0;
             testOffsets[1] = 1;
-            testOffsets[2] = totalSamples;
-            testOffsets[3] = totalSamples - 1;
+            testOffsets[2] = totalSamples - 1;
+            testOffsets[3] = totalSamples;
 
             for (int i = 4; i < testOffsets.length; i++) {
                 testOffsets[i] = (int) (Math.random() * totalSamples);

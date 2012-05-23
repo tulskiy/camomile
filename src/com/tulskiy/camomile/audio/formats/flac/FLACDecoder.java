@@ -35,8 +35,8 @@ public class FLACDecoder implements Decoder {
     }
 
     public void seek(int sample) {
-        close();
-        open(file);
+//        close();
+//        open(file);
         seek(handle, sample);
     }
 

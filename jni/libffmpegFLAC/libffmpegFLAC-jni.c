@@ -27,7 +27,6 @@ typedef struct ContextHolder {
     int8_t read_buf[MAX_FRAMESIZE];
     FILE* input;
     int bytesleft;
-    int write_pos;
     int frame;
 } ContextHolder;
 
@@ -60,6 +59,11 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
     format[2] = fc->bps;
     (*env)->ReleaseIntArrayElements(env, formatArray, format, 0);
 
+    if (fc->channels > 2 || (fc->bps != 16 && fc->bps != 8)) {
+        LOGE("unsupported format: channels: %d, bps: %d!", fc->channels, fc->bps);
+        return 0;
+    }
+
     return (jint) context;
 }
 
@@ -71,45 +75,51 @@ void yield() {}
 
 jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buffer, jint size) {
     ContextHolder* context = (ContextHolder*) handle;
-    jshort* target = (jshort*)(*env)->GetByteArrayElements(env, buffer, 0);
+    jbyte* target = (jbyte*)(*env)->GetByteArrayElements(env, buffer, 0);
+    jshort* target_16b = (jshort*) target;
 
     int length = fread(&context->read_buf[context->bytesleft], 1, MAX_FRAMESIZE - context->bytesleft, context->input);
     context->bytesleft += length;
-    LOG("read %d bytes", length);
+//    LOG("read %d bytes, bytesleft: %d", length, context->bytesleft);
     if (context->bytesleft <= 0)
         return -1;
 
     int ret = flac_decode_frame(context->fc, context->decoded0, context->decoded1, context->read_buf, context->bytesleft, yield);
     if (ret < 0) {
-        LOG("flac decode returned %d", ret);
+        LOGE("flac decode returned %d", ret);
         return -1;
     }
-    LOG("Frame: %d, blocksize %d", context->frame++, context->fc->blocksize);
-//    int sampleShift = FLAC_OUTPUT_DEPTH-context->fc->bps;
+//    LOG("Frame: %d, blocksize %d", context->frame++, context->fc->blocksize);
+//    LOG("sample: %d, totalsamples: %d", context->fc->samplenumber, context->fc->totalsamples);
     int pos = 0;
-    if(context->fc->channels == 2) {
-        for(int sample = context->fc->sample_skip; sample < context->fc->blocksize; sample++) {
-            int32_t tmp = context->decoded0[sample];
-    		target[pos++] = tmp & 0xFFFF;
+    if (context->fc->bps == 16) {
+        for (int sample = context->fc->sample_skip; sample < context->fc->blocksize; sample++) {
+            target_16b[pos++] = context->decoded0[sample] + 0x80;
 
-    		tmp = context->decoded1[sample];
-    		target[pos++] = tmp & 0xFFFF;
-    	}
-    } /*else if(channels == 1) {
-    	for(sample = wide_sample = 0; wide_sample < wide_samples; wide_sample++)
-    	    target[sample++] = (FLAC__uint16)(buffer[0][wide_sample] + 0x8000);
-    }*/
+            if (context->fc->channels == 2) {
+                target_16b[pos++] = context->decoded1[sample] + 0x80;
+            }
+        }
+        pos *= 2;
+    } else if (context->fc->bps == 8) {
+        for (int sample = context->fc->sample_skip; sample < context->fc->blocksize; sample++) {
+            target[pos++] = context->decoded0[sample] + 0x80;
+
+            if (context->fc->channels == 2) {
+                target[pos++] = context->decoded1[sample] + 0x80;
+            }
+        }
+    }
 
     int consumed = context->fc->gb.index/8;
-    LOG("consumed %d bytes", consumed);
-    context->write_pos = consumed;
+//    LOG("consumed %d bytes", consumed);
     context->bytesleft -= consumed;
     memmove(context->read_buf, &context->read_buf[consumed], context->bytesleft);
 
     context->fc->sample_skip = 0;
 
     (*env)->ReleaseByteArrayElements(env, buffer, (jbyte*)target, 0);
-    return pos * 2;
+    return pos;
 }
 
 void JNI_FUNCTION(close) (JNIEnv* env, jobject obj, jint handle) {

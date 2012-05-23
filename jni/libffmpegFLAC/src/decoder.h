@@ -5,7 +5,7 @@
 
 #define MAX_CHANNELS 2       /* Maximum supported channels */
 #define MAX_BLOCKSIZE 4608   /* Maxsize in samples of one uncompressed frame */
-#define MAX_FRAMESIZE 14000  /* Maxsize in bytes of one compressed frame32768 */
+#define MAX_FRAMESIZE 32768  /* Maxsize in bytes of one compressed frame32768 */
 
 #define FLAC_OUTPUT_DEPTH 29 /* Provide samples left-shifted to 28 bits+sign */
 

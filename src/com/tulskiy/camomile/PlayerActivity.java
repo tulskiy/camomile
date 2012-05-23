@@ -83,7 +83,7 @@ public class PlayerActivity extends Activity {
                         fos.write(new byte[44]);
                         long time = System.currentTimeMillis();
                         int count = 0;
-                        if (decoder.open(new File("/sdcard/test/01 - Adele - Rolling In The Deep.flac"))) {
+                        if (decoder.open(new File("/sdcard/test/Rolling In The Deep_8bit.flac"))) {
                             byte[] buffer = new byte[65536];
                             while (true) {
                                 int length = decoder.decode(buffer);
@@ -160,7 +160,7 @@ public class PlayerActivity extends Activity {
         public void run() {
             try {
                 Decoder decoder = new FLACDecoder();
-                if (decoder.open(new File("/sdcard/test/01 - Adele - Rolling In The Deep.flac"))) {
+                if (decoder.open(new File("/sdcard/test/Rolling In The Deep_8bit.flac"))) {
                     AudioFormat audioFormat = decoder.getAudioFormat();
                     int minSize = 4 * AudioTrack.getMinBufferSize(
                             audioFormat.getSampleRate(),

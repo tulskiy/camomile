@@ -1,0 +1,12 @@
+prefix=
+exec_prefix=
+libdir=${pcfiledir}
+includedir=/mnt/hgfs/Andro/audioplayer_ffmpeg/jni
+
+Name: libavcore
+Description: FFmpeg multimedia shared core utilities library
+Version: 0.6.0
+Requires: libavutil = 50.24.0
+Conflicts:
+Libs: ${libdir}/libavcore.a 
+Cflags: -I${includedir}

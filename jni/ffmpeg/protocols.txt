@@ -1,0 +1,6 @@
+concat			mmst			rtmpt
+file			pipe			rtmpte
+gopher			rtmp			rtp
+http			rtmpe			tcp
+md5			rtmps			udp
+mmsh

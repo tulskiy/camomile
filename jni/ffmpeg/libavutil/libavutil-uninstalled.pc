@@ -1,0 +1,12 @@
+prefix=
+exec_prefix=
+libdir=${pcfiledir}
+includedir=/mnt/hgfs/_Andro387/oss/audioplayer_ffmpeg/jni
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 50.24.0
+Requires: 
+Conflicts:
+Libs: ${libdir}/libavutil.a 
+Cflags: -I${includedir}

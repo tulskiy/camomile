@@ -1,0 +1,7 @@
+aac			dvdsub			mpegaudio
+ac3			h261			mpegvideo
+cavsvideo		h263			pnm
+dca			h264			vc1
+dirac			mjpeg			vp3
+dnxhd			mlp			vp8
+dvbsub			mpeg4video

@@ -1,0 +1,12 @@
+prefix=
+exec_prefix=
+libdir=${pcfiledir}
+includedir=/mnt/hgfs/_Andro387/oss/audioplayer_ffmpeg/jni
+
+Name: libavformat
+Description: FFmpeg container format library
+Version: 52.78.3
+Requires: libavcodec = 52.87.0
+Conflicts:
+Libs: ${libdir}/libavformat.a -lm -lz 
+Cflags: -I${includedir}

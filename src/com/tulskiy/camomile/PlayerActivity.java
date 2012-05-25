@@ -12,9 +12,11 @@ import com.j256.ormlite.dao.RuntimeExceptionDao;
 import com.j256.ormlite.table.TableUtils;
 import com.tulskiy.camomile.audio.AudioFormat;
 import com.tulskiy.camomile.audio.Decoder;
+import com.tulskiy.camomile.audio.formats.ffmpeg.FFMPEGDecoder;
 import com.tulskiy.camomile.audio.formats.flac.FLACDecoder;
 import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
 import com.tulskiy.camomile.audio.formats.mp3.MP3FileReader;
+import com.tulskiy.camomile.audio.formats.ogg.VorbisDecoder;
 import com.tulskiy.camomile.audio.formats.wavpack.WavPackDecoder;
 import com.tulskiy.camomile.audio.model.Track;
 import com.tulskiy.camomile.db.DatabaseHelper;
@@ -76,24 +78,24 @@ public class PlayerActivity extends Activity {
             public void onClick(View view) {
                 try {
                     long totalTime = 0;
-                    int trials = 1;
+                    int trials = 5;
                     for (int i = 0; i < trials; i++) {
-                        Decoder decoder = new FLACDecoder();
-                        FileOutputStream fos = new FileOutputStream("/sdcard/output.wav");
-                        fos.write(new byte[44]);
+                        Decoder decoder = new FFMPEGDecoder();
+//                        FileOutputStream fos = new FileOutputStream("/sdcard/output.wav");
+//                        fos.write(new byte[44]);
                         long time = System.currentTimeMillis();
                         int count = 0;
-                        if (decoder.open(new File("/sdcard/test/Rolling In The Deep_8bit.flac"))) {
+                        if (decoder.open(new File("/sdcard/test/Rolling In The Deep.flac"))) {
                             byte[] buffer = new byte[65536];
                             while (true) {
                                 int length = decoder.decode(buffer);
-                                if (length == -1) {
+                                if (length < 0) {
                                     break;
                                 }
-                                fos.write(buffer, 0, length);
+//                                fos.write(buffer, 0, length);
                             }
                             decoder.close();
-                            fos.close();
+//                            fos.close();
                         }
                         long result = System.currentTimeMillis() - time;
                         totalTime += result;
@@ -159,21 +161,18 @@ public class PlayerActivity extends Activity {
     private static class PlayerThread implements Runnable {
         public void run() {
             try {
-                Decoder decoder = new FLACDecoder();
-                if (decoder.open(new File("/sdcard/test/Rolling In The Deep_8bit.flac"))) {
+                Decoder decoder = new FFMPEGDecoder();
+                if (decoder.open(new File("/sdcard/test/Rolling In The Deep.flac"))) {
                     AudioFormat audioFormat = decoder.getAudioFormat();
-                    int minSize = 4 * AudioTrack.getMinBufferSize(
-                            audioFormat.getSampleRate(),
-                            audioFormat.getChannelConfig(),
-                            audioFormat.getEncoding());
+                    int bufferSize = 192000;
                     AudioTrack track = new AudioTrack(
                             AudioManager.STREAM_MUSIC,
                             audioFormat.getSampleRate(),
                             audioFormat.getChannelConfig(),
                             audioFormat.getEncoding(),
-                            minSize, AudioTrack.MODE_STREAM);
+                            bufferSize, AudioTrack.MODE_STREAM);
                     track.play();
-                    byte[] buffer = new byte[minSize];
+                    byte[] buffer = new byte[192000];
                     int i = 0;
                     while (true) {
                         int length = decoder.decode(buffer);

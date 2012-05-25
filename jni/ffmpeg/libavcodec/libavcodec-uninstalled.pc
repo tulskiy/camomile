@@ -1,0 +1,12 @@
+prefix=
+exec_prefix=
+libdir=${pcfiledir}
+includedir=/mnt/hgfs/_Andro387/oss/audioplayer_ffmpeg/jni
+
+Name: libavcodec
+Description: FFmpeg codec library
+Version: 52.87.0
+Requires: libavcore = 0.6.0
+Conflicts:
+Libs: ${libdir}/libavcodec.a -lm -lz 
+Cflags: -I${includedir}

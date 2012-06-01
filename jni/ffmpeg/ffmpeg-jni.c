@@ -1,5 +1,6 @@
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
+#include "libavformat/isom.h"
 #include <string.h>
 #include <jni.h>
 #include <stdio.h>
@@ -62,6 +63,8 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
 	format[0] = ctx->c_ctx->sample_rate;
     format[1] = ctx->c_ctx->channels;
     format[2] = av_get_bits_per_sample_format(ctx->c_ctx->sample_fmt);
+    format[3] = ctx->f_ctx->enc_delay;
+    format[4] = ctx->f_ctx->enc_padding;
 	(*env)->ReleaseIntArrayElements(env, formatArray, format, 0);
 
     ctx->codec = avcodec_find_decoder(ctx->c_ctx->codec_id);
@@ -73,6 +76,9 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
         LOGE("failed to open codec");
     }
 
+    LOG("enc_delay: %d, enc_padding: %d", ctx->f_ctx->enc_delay, ctx->f_ctx->enc_padding);
+    LOG("total samples: %d", ctx->f_ctx->duration * ctx->c_ctx->sample_rate / AV_TIME_BASE);
+
     ctx->bytesleft = 0;
     ctx->out_buf = av_malloc(AVCODEC_MAX_AUDIO_FRAME_SIZE);
 
@@ -80,12 +86,28 @@ jint JNI_FUNCTION(open) (JNIEnv* env, jobject obj, jstring file, jintArray forma
 }
 
 void JNI_FUNCTION(seek) (JNIEnv* env, jobject obj, jint handle, jint offset) {
+    Context* ctx = (Context*) handle;
+
+    int pos = (((double) offset) / ctx->c_ctx->sample_rate) * AV_TIME_BASE;
+    LOG("seek to sample %d, samplerate %d, position: %d", offset, ctx->c_ctx->sample_rate, pos);
+    int ret = av_seek_frame(ctx->f_ctx, -1, pos, AVSEEK_FLAG_BACKWARD);
+    avcodec_flush_buffers(ctx->c_ctx);
+    ctx->bytesleft = 0;
+    if (ret < 0) {
+        char error[256];
+        av_strerror(ret, error, sizeof(error));
+        LOGE("av_seek_frame returned %d, %s", ret, error);
+    }
+
+    AVStream* stream = ctx->f_ctx->streams[ctx->stream_id];
+    MOVStreamContext *sc = stream->priv_data;
+    LOG("current sample %d, cttc sample: %d, samples per frame %d, sample count %d", sc->current_sample, sc->ctts_sample, sc->sample_size, sc->sample_count);
 }
 
 jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buffer, jint size) {
     Context* ctx = (Context*) handle;
 	jbyte* target = (jbyte*)(*env)->GetByteArrayElements(env, buffer, 0);
-	if (ctx->pkt.size == 0) {
+	if (ctx->bytesleft == 0) {
 //	    LOG("reading next frame");
         int ret = av_read_frame (ctx->f_ctx, &ctx->pkt);
 //        LOG("%d", ctx->pkt.data);
@@ -108,12 +130,11 @@ jint JNI_FUNCTION(decode) (JNIEnv* env, jobject obj, jint handle, jbyteArray buf
     if (consumed < 0) {
         return -1;
     } else {
-        ctx->pkt.size -= consumed;
-        ctx->pkt.data += consumed;
+        ctx->bytesleft -= consumed;
     }
 
-//    if (ctx->bytesleft == 0)
-//        av_free_packet(&ctx->pkt);
+    if (ctx->bytesleft == 0)
+        av_free_packet(&ctx->pkt);
     memcpy(target, ctx->out_buf, out_size);
 	(*env)->ReleaseByteArrayElements(env, buffer, (jbyte*)target, 0);
 	return out_size;

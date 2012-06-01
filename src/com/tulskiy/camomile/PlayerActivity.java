@@ -78,28 +78,41 @@ public class PlayerActivity extends Activity {
             public void onClick(View view) {
                 try {
                     long totalTime = 0;
-                    int trials = 5;
+                    int trials = 1;
                     for (int i = 0; i < trials; i++) {
                         Decoder decoder = new FFMPEGDecoder();
-//                        FileOutputStream fos = new FileOutputStream("/sdcard/output.wav");
-//                        fos.write(new byte[44]);
+                        FileOutputStream fos = new FileOutputStream("/sdcard/output.wav");
+                        fos.write(new byte[44]);
                         long time = System.currentTimeMillis();
                         int count = 0;
-                        if (decoder.open(new File("/sdcard/test/Rolling In The Deep.flac"))) {
+                        int decoded = 0;
+                        if (decoder.open(new File("/sdcard/test/sample_itunes_new.m4a"))) {
                             byte[] buffer = new byte[65536];
+                            decoder.seek(2112);
+                            int offset = 0;
                             while (true) {
                                 int length = decoder.decode(buffer);
                                 if (length < 0) {
                                     break;
                                 }
-//                                fos.write(buffer, 0, length);
+                                length -= offset;
+                                decoded += length;
+                                if (length < 0) {
+                                    offset = -length;
+                                    continue;
+                                }
+                                fos.write(buffer, offset, length);
+
+                                offset = 0;
                             }
                             decoder.close();
-//                            fos.close();
+                            fos.flush();
+                            fos.close();
                         }
                         long result = System.currentTimeMillis() - time;
                         totalTime += result;
                         Log.d("camomile", "time to decode: " + result);
+                        Log.d("camomile", "decoded samples: " + (decoded / 4));
                     }
 
                     Log.d("camomile", "average decode time: " + totalTime / trials);
@@ -162,7 +175,7 @@ public class PlayerActivity extends Activity {
         public void run() {
             try {
                 Decoder decoder = new FFMPEGDecoder();
-                if (decoder.open(new File("/sdcard/test/Rolling In The Deep.flac"))) {
+                if (decoder.open(new File("/sdcard/test/sample_faac.mp4"))) {
                     AudioFormat audioFormat = decoder.getAudioFormat();
                     int bufferSize = 192000;
                     AudioTrack track = new AudioTrack(

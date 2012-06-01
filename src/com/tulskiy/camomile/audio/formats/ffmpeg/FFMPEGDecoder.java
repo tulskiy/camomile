@@ -14,11 +14,16 @@ public class FFMPEGDecoder implements Decoder {
     private AudioFormat audioFormat;
     private File file;
 
+    private int encDelay;
+    private int encPadding;
+
     public boolean open(File file) {
         this.file = file;
-        int[] format = new int[3];
+        int[] format = new int[5];
         handle = open(file.getAbsolutePath(), format);
         audioFormat = new AudioFormat(format[0], format[1], format[2]);
+        encDelay = format[3];
+        encPadding = format[4];
         return handle != 0;
     }
 
@@ -36,6 +41,14 @@ public class FFMPEGDecoder implements Decoder {
 
     public void seek(int sample) {
         seek(handle, sample);
+    }
+
+    public int getEncDelay() {
+        return encDelay;
+    }
+
+    public int getEncPadding() {
+        return encPadding;
     }
 
     private native int open(String fileName, int[] format);

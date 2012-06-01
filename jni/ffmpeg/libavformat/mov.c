@@ -185,8 +185,8 @@ static int mov_read_itunsmpb(MOVContext *c, ByteIOContext *pb, MOVAtom atom, int
 						}
 					}
 		
-					if(enc_delay >= 0 && enc_delay <= 1152 * 2 && enc_padding >= 0 && enc_padding <= 4 * 1152) {
-						//LOGE("itunes enc_delay=%d enc_padding=%d", enc_delay, enc_padding);
+					if(enc_delay >= 0 && enc_padding >= 0) {
+						LOGE("itunes enc_delay=%d enc_padding=%d", enc_delay, enc_padding);
 						c->enc_delay = enc_delay;
 						c->enc_padding = enc_padding;
 					}

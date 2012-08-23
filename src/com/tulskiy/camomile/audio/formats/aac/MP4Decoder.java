@@ -2,7 +2,6 @@ package com.tulskiy.camomile.audio.formats.aac;
 
 import com.tulskiy.camomile.audio.AudioFormat;
 import com.tulskiy.camomile.audio.Decoder;
-import com.tulskiy.camomile.audio.formats.ffmpeg.FFMPEGDecoder;
 
 import java.io.File;
 
@@ -11,43 +10,41 @@ import java.io.File;
  * Date: 5/30/12
  */
 public class MP4Decoder implements Decoder {
-    /**
-     * frame size in samples
-     */
-    private static final int FRAME_SIZE = 1024;
-
-    private FFMPEGDecoder ffmpegDecoder = new FFMPEGDecoder();
-
-    private int frame;
-    private int skipSamples;
+    private int handle;
+    private AudioFormat audioFormat;
 
     public boolean open(File file) {
-        boolean ret = ffmpegDecoder.open(file);
-
-        init(0);
-
-        return ret;
-    }
-
-    private void init(int sample) {
-        sample += ffmpegDecoder.getEncDelay();
+        int[] format = new int[3];
+        handle = open(file.getAbsolutePath(), format);
+        audioFormat = new AudioFormat(format[0], format[1], format[2]);
+        return handle != 0;
     }
 
     public AudioFormat getAudioFormat() {
-        return ffmpegDecoder.getAudioFormat();
+        return audioFormat;
     }
 
     public int decode(byte[] buffer) {
-        int length = ffmpegDecoder.decode(buffer);
-        frame++;
-        return length;
+        return decode(handle, buffer, buffer.length);
     }
 
     public void close() {
-        ffmpegDecoder.close();
+        close(handle);
     }
 
     public void seek(int sample) {
-        ffmpegDecoder.seek(sample);
+        seek(handle, sample);
+    }
+
+    private native int open(String fileName, int[] format);
+
+    private native int seek(int handle, int offset);
+
+    private native int decode(int handle, byte[] buffer, int size);
+
+    private native int close(int handle);
+
+    static {
+        System.loadLibrary("ffmpeg-jni");
     }
 }

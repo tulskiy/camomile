@@ -12,7 +12,7 @@ import com.j256.ormlite.dao.RuntimeExceptionDao;
 import com.j256.ormlite.table.TableUtils;
 import com.tulskiy.camomile.audio.AudioFormat;
 import com.tulskiy.camomile.audio.Decoder;
-import com.tulskiy.camomile.audio.formats.ffmpeg.FFMPEGDecoder;
+import com.tulskiy.camomile.audio.formats.aac.MP4Decoder;
 import com.tulskiy.camomile.audio.formats.flac.FLACDecoder;
 import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
 import com.tulskiy.camomile.audio.formats.mp3.MP3FileReader;
@@ -80,7 +80,7 @@ public class PlayerActivity extends Activity {
                     long totalTime = 0;
                     int trials = 1;
                     for (int i = 0; i < trials; i++) {
-                        Decoder decoder = new FFMPEGDecoder();
+                        Decoder decoder = new MP4Decoder();
                         FileOutputStream fos = new FileOutputStream("/sdcard/output.wav");
                         fos.write(new byte[44]);
                         long time = System.currentTimeMillis();
@@ -174,8 +174,9 @@ public class PlayerActivity extends Activity {
     private static class PlayerThread implements Runnable {
         public void run() {
             try {
-                Decoder decoder = new FFMPEGDecoder();
-                if (decoder.open(new File("/sdcard/test/sample_faac.mp4"))) {
+                Decoder decoder = new MP4Decoder();
+                File file = new File("/sdcard/test/09. Something About Us.m4a");
+                if (decoder.open(file)) {
                     AudioFormat audioFormat = decoder.getAudioFormat();
                     int bufferSize = 192000;
                     AudioTrack track = new AudioTrack(

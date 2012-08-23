@@ -3,6 +3,7 @@ package com.tulskiy.camomile.audio;
 import android.content.res.AssetManager;
 import android.test.InstrumentationTestCase;
 import android.util.Log;
+import com.tulskiy.camomile.audio.formats.aac.MP4Decoder;
 import com.tulskiy.camomile.audio.formats.flac.FLACDecoder;
 import com.tulskiy.camomile.audio.formats.mp3.MP3Decoder;
 import com.tulskiy.camomile.audio.formats.ogg.VorbisDecoder;
@@ -36,6 +37,11 @@ public class DecoderTest extends InstrumentationTestCase {
         new Tester(new FLACDecoder(), "testfiles/flac/sample.flac", 29400).start();
     }
 
+    public void testMP4() throws IOException {
+        new Tester(new MP4Decoder(), "testfiles/aac/sample_nero.mp4", 29400).start();
+        new Tester(new MP4Decoder(), "testfiles/aac/sample_itunes_new.m4a", 29400).start();
+    }
+
     class Tester {
         private Decoder decoder;
         private String fileName;
@@ -50,6 +56,7 @@ public class DecoderTest extends InstrumentationTestCase {
             this.totalSamples = totalSamples;
         }
 
+        @SuppressWarnings("ResultOfMethodCallIgnored")
         public void start() {
             Log.d("camomile", "decoding " + fileName);
             input = copyInputData(decoder, fileName);
@@ -57,7 +64,7 @@ public class DecoderTest extends InstrumentationTestCase {
             assertTrue("Decoder returned an error", decoder.open(input));
             fmt = decoder.getAudioFormat();
 
-            reference = decode(0);
+            reference = decode(-1);
 
             int[] testOffsets = new int[10];
             testOffsets[0] = 0;
@@ -101,7 +108,10 @@ public class DecoderTest extends InstrumentationTestCase {
 
         private ByteBuffer decode(int offset) {
             Log.d("camomile", "seek to " + offset);
-            decoder.seek(offset);
+            if (offset >= 0)
+                decoder.seek(offset);
+            else
+                offset = 0;
 
             ByteBuffer output = ByteBuffer.allocate(fmt.getFrameSize() * totalSamples + 10000);
 

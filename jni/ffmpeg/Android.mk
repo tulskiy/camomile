@@ -18,7 +18,6 @@ PRIVATE_WHOLE_STATIC_LIBRARIES := $(call map,static-library-path,$(PRIVATE_WHOLE
 
 LOCAL_MODULE := ffmpeg-jni
 LOCAL_CFLAGS=-O3 -std=c99
-LOCAL_SRC_FILES := ffmpeg-jni.c
+LOCAL_SRC_FILES := jni/ffmpeg-aac-jni.c
 
 include $(BUILD_SHARED_LIBRARY)
-
